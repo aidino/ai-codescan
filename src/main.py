@@ -80,13 +80,49 @@ def web() -> None:
     
     try:
         import streamlit.web.cli as st_cli
-        # TODO: Point to actual streamlit app when implemented
-        # This will be implemented in Task 1.2
-        click.echo("Web interface not yet implemented.")
-        click.echo("This feature will be available after implementing the Streamlit UI.")
+        import sys
+        import os
         
+        # Path to the Streamlit app
+        app_path = os.path.join(
+            os.path.dirname(__file__), 
+            'agents', 
+            'interaction_tasking', 
+            'web_ui.py'
+        )
+        
+        if not os.path.exists(app_path):
+            click.echo(f"❌ Streamlit app not found at: {app_path}")
+            sys.exit(1)
+        
+        # Set up Streamlit arguments
+        streamlit_args = [
+            'streamlit',
+            'run',
+            app_path,
+            '--server.port=8501',
+            '--server.address=0.0.0.0',
+            '--browser.gatherUsageStats=false',
+            '--logger.level=warning'
+        ]
+        
+        # Replace sys.argv for Streamlit
+        original_argv = sys.argv.copy()
+        sys.argv = streamlit_args
+        
+        try:
+            # Run Streamlit
+            st_cli.main()
+        finally:
+            # Restore original argv
+            sys.argv = original_argv
+            
     except ImportError:
-        click.echo("Streamlit not installed. Please run: poetry install")
+        click.echo("❌ Streamlit not installed. Please run: poetry install")
+        sys.exit(1)
+    except Exception as e:
+        logger.error(f"Failed to start web interface: {e}")
+        click.echo(f"❌ Failed to start web interface: {e}")
         sys.exit(1)
 
 
