@@ -61,6 +61,22 @@ pygments = "^2.16.1"
 # Performance Monitoring
 psutil = "^5.9.6"
 
+# LangGraph & Agent Framework
+langgraph = "^0.2.52"
+langgraph-sdk = "^0.1.27"  
+langgraph-checkpoint = "^2.0.4"
+langgraph-checkpoint-postgres = "^2.0.2"
+
+# LangChain Core & Components  
+langchain = "^0.3.13"
+langchain-core = "^0.3.26"
+langchain-community = "^0.3.13"
+langchain-experimental = "^0.3.0"
+langchain-openai = "^0.2.14"
+
+# Additional LangGraph Tools
+langsmith = "^0.1.137"
+
 [tool.poetry.group.dev.dependencies]
 # Development Tools
 pytest = "^7.4.3"
