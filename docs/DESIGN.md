@@ -23,7 +23,11 @@ Phiên bản: 1.0
    3.5. E. TEAM Code Analysis (Đội Phân tích Mã nguồn)  
    3.6. F. TEAM LLM Services (Đội Dịch vụ LLM)  
    3.7. G. TEAM Synthesis & Reporting (Đội Tổng hợp & Báo cáo)  
-4. [Phần IV: Công nghệ và Công cụ Đề xuất cho v1.0](#bookmark=id.ypdlsqmn5jhd)
+4. Phần IV: Công nghệ và Công cụ Đề xuất cho v1.0
+5. Phần V: Protocols và APIs Nội bộ Chi tiết
+6. Phần VI: Error Handling và Security Considerations
+7. Phần VII: Deployment và Scaling Strategy
+8. Phần VIII: Testing Strategy và Quality Assurance
 
 ## **Phần I: Giới thiệu, Tầm nhìn và Mục tiêu Dự án**
 
@@ -609,3 +613,436 @@ Dưới đây là tổng hợp các công nghệ và công cụ chính được 
   * Xem xét các giải pháp như Mem0 hoặc các thư viện caching đơn giản trong Python.
 
 Việc lựa chọn công nghệ cụ thể cho từng thành phần sẽ cần được đánh giá kỹ lưỡng hơn trong quá trình triển khai, dựa trên các yếu tố như hiệu năng, tính dễ tích hợp, sự hỗ trợ của cộng đồng và chi phí (nếu có). Ưu tiên hàng đầu là sử dụng các công cụ mã nguồn mở và các thư viện Python phổ biến để thuận tiện cho việc phát triển và bảo trì.
+
+## **Phần V: Protocols và APIs Nội bộ Chi tiết**
+
+### **5.1. Task Definition Protocol (TDP)**
+
+TDP định nghĩa cấu trúc chuẩn cho việc mô tả các tác vụ review code:
+
+```json
+{
+  "task_id": "string (UUID)",
+  "task_type": "enum [project_review, pr_review, qna, diagram_generation]",
+  "repository": {
+    "url": "string",
+    "branch": "string (default: main/master)",
+    "commit_hash": "string (optional)"
+  },
+  "pr_info": {
+    "pr_id": "string (required if task_type = pr_review)",
+    "platform": "enum [github, gitlab, bitbucket]"
+  },
+  "analysis_config": {
+    "languages": ["array of strings"],
+    "include_architectural_analysis": "boolean",
+    "include_security_analysis": "boolean",
+    "linter_configs": "object"
+  },
+  "user_context": {
+    "user_id": "string",
+    "session_id": "string",
+    "preferences": "object"
+  },
+  "timestamp": "ISO 8601 datetime",
+  "priority": "enum [low, medium, high]"
+}
+```
+
+### **5.2. Agent State Communication Protocol (ASCP)**
+
+ASCP định nghĩa cách các TEAM báo cáo trạng thái:
+
+```json
+{
+  "agent_id": "string",
+  "task_id": "string (UUID reference)",
+  "status": "enum [PENDING, RUNNING, COMPLETED, FAILED_RETRYABLE, FAILED_PERMANENT]",
+  "progress_percentage": "integer (0-100)",
+  "current_step": "string",
+  "estimated_completion": "ISO 8601 datetime",
+  "result_data": "object (optional)",
+  "error_details": {
+    "error_code": "string",
+    "error_message": "string",
+    "retry_count": "integer",
+    "stack_trace": "string"
+  },
+  "timestamp": "ISO 8601 datetime"
+}
+```
+
+### **5.3. LLMServiceRequest/Response Protocol (LSRP)**
+
+```json
+// Request
+{
+  "request_id": "string (UUID)",
+  "task_type": "enum [code_explanation, pr_summary, qna_answer, refactoring_suggestion]",
+  "context": {
+    "code_snippets": ["array of code objects"],
+    "ckg_data": "object",
+    "diff_data": "object (for PR analysis)",
+    "user_question": "string (for Q&A)"
+  },
+  "llm_config": {
+    "model": "string",
+    "temperature": "float",
+    "max_tokens": "integer",
+    "prompt_template": "string"
+  },
+  "metadata": {
+    "requesting_agent": "string",
+    "priority": "enum [low, medium, high]",
+    "timeout_seconds": "integer"
+  }
+}
+
+// Response
+{
+  "request_id": "string (UUID reference)",
+  "status": "enum [SUCCESS, FAILURE, TIMEOUT]",
+  "result": {
+    "generated_text": "string",
+    "confidence_score": "float (0-1)",
+    "token_usage": {
+      "prompt_tokens": "integer",
+      "completion_tokens": "integer",
+      "total_tokens": "integer"
+    }
+  },
+  "error_details": "object (if status = FAILURE)",
+  "processing_time_ms": "integer",
+  "timestamp": "ISO 8601 datetime"
+}
+```
+
+### **5.4. ProjectDataContext Schema (PDCS)**
+
+```json
+{
+  "project_id": "string (UUID)",
+  "repository_info": {
+    "url": "string",
+    "local_path": "string",
+    "branch": "string",
+    "commit_hash": "string",
+    "clone_timestamp": "ISO 8601 datetime"
+  },
+  "languages_detected": [
+    {
+      "language": "string",
+      "confidence": "float (0-1)",
+      "file_count": "integer",
+      "line_count": "integer"
+    }
+  ],
+  "frameworks_detected": ["array of strings"],
+  "project_structure": {
+    "total_files": "integer",
+    "source_files": "integer",
+    "test_files": "integer",
+    "config_files": "integer",
+    "documentation_files": "integer"
+  },
+  "pr_data": "object (optional, if analyzing PR)",
+  "session_info": {
+    "session_id": "string",
+    "created_timestamp": "ISO 8601 datetime",
+    "expires_at": "ISO 8601 datetime"
+  }
+}
+```
+
+### **5.5. CKG Query API Specification**
+
+```python
+# Interface định nghĩa các methods chuẩn
+class CKGQueryInterface:
+    def get_class_definition(self, class_name: str, namespace: str = None) -> ClassInfo
+    def find_callers(self, function_name: str, file_path: str = None) -> List[CallRelation]
+    def find_callees(self, function_name: str) -> List[CallRelation]
+    def get_inheritance_hierarchy(self, class_name: str) -> InheritanceTree
+    def get_dependencies(self, module_name: str) -> List[Dependency]
+    def find_circular_dependencies(self) -> List[CircularDependency]
+    def get_unused_public_elements(self) -> List[UnusedElement]
+    def search_by_pattern(self, pattern: str, entity_type: str) -> List[Entity]
+```
+
+## **Phần VI: Error Handling và Security Considerations**
+
+### **6.1. Error Handling Strategy**
+
+#### **6.1.1. Error Classification**
+- **System Errors**: Lỗi hệ thống (database connection, file system, network)
+- **Business Logic Errors**: Lỗi logic nghiệp vụ (invalid input, parsing failures)
+- **External Service Errors**: Lỗi từ dịch vụ bên ngoài (LLM API, Git platforms)
+- **Resource Errors**: Lỗi tài nguyên (memory, disk space, timeout)
+
+#### **6.1.2. Error Handling Mechanisms**
+
+```python
+# Central Error Handler
+class ErrorHandler:
+    def handle_error(self, error: Exception, context: ErrorContext) -> ErrorResponse:
+        # Log error with full context
+        # Determine if error is retryable
+        # Execute recovery strategy
+        # Notify relevant components
+        pass
+
+# Retry Strategy
+class RetryStrategy:
+    def should_retry(self, error: Exception, attempt_count: int) -> bool
+    def get_backoff_delay(self, attempt_count: int) -> float
+    def get_max_attempts(self, error_type: str) -> int
+```
+
+#### **6.1.3. Logging và Monitoring**
+- **Structured Logging**: Sử dụng JSON format cho logs
+- **Log Levels**: DEBUG, INFO, WARNING, ERROR, CRITICAL
+- **Distributed Tracing**: Theo dõi request qua các TEAM agents
+- **Metrics Collection**: Response times, error rates, resource usage
+
+### **6.2. Security Considerations**
+
+#### **6.2.1. PAT (Personal Access Token) Security**
+
+```python
+# Secure PAT Handler
+class SecurePATHandler:
+    def __init__(self):
+        self.encryption_key = self._generate_session_key()
+        self.pat_storage = {}  # In-memory only
+    
+    def store_pat(self, session_id: str, pat: str, ttl_seconds: int = 3600):
+        # Encrypt PAT before storing
+        encrypted_pat = self._encrypt(pat)
+        # Store with expiration
+        self.pat_storage[session_id] = {
+            'pat': encrypted_pat,
+            'expires_at': time.time() + ttl_seconds
+        }
+    
+    def get_pat(self, session_id: str) -> Optional[str]:
+        # Check expiration
+        # Decrypt and return
+        pass
+    
+    def cleanup_expired_pats(self):
+        # Regular cleanup of expired PATs
+        pass
+```
+
+#### **6.2.2. Input Validation và Sanitization**
+- Validate tất cả inputs từ user
+- Sanitize URLs và paths
+- Prevent injection attacks
+- Rate limiting cho API calls
+
+#### **6.2.3. Data Privacy**
+- Không log sensitive information
+- Secure session management
+- Data retention policies
+- GDPR compliance considerations
+
+## **Phần VII: Deployment và Scaling Strategy**
+
+### **7.1. Container Architecture**
+
+```yaml
+# docker-compose.yml structure
+version: '3.8'
+services:
+  # Main Application
+  ai-codescan-app:
+    build: .
+    environment:
+      - NEO4J_URI=bolt://neo4j:7687
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    depends_on:
+      - neo4j
+      - redis
+    volumes:
+      - ./temp_repos:/app/temp_repos
+  
+  # Neo4j Database
+  neo4j:
+    image: neo4j:5.0-community
+    environment:
+      - NEO4J_AUTH=neo4j/password
+    volumes:
+      - neo4j_data:/data
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+  
+  # Redis for Session Management
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redis_data:/data
+  
+  # Language-specific parsers (optional microservices)
+  java-parser:
+    build: ./parsers/java
+    ports:
+      - "8081:8080"
+  
+  kotlin-parser:
+    build: ./parsers/kotlin
+    ports:
+      - "8082:8080"
+  
+  dart-parser:
+    build: ./parsers/dart
+    ports:
+      - "8083:8080"
+
+volumes:
+  neo4j_data:
+  redis_data:
+```
+
+### **7.2. Scaling Considerations**
+
+#### **7.2.1. Horizontal Scaling**
+- **Agent Pool Pattern**: Multiple instances của mỗi TEAM agent
+- **Load Balancing**: Distribute tasks across agent instances
+- **Message Queues**: Sử dụng Redis/RabbitMQ cho task queuing
+
+#### **7.2.2. Resource Management**
+- **Memory Management**: Cleanup temporary repositories
+- **Disk Space Management**: Automatic cleanup policies
+- **API Rate Limiting**: Manage LLM API quotas
+- **Connection Pooling**: Database connection management
+
+### **7.3. Performance Optimization**
+
+```python
+# Performance Monitoring
+class PerformanceMonitor:
+    def track_operation(self, operation_name: str, duration: float):
+        # Record operation metrics
+        pass
+    
+    def get_bottlenecks(self) -> List[PerformanceBottleneck]:
+        # Identify slow operations
+        pass
+    
+    def generate_performance_report(self) -> PerformanceReport:
+        # Generate performance insights
+        pass
+```
+
+## **Phần VIII: Testing Strategy và Quality Assurance**
+
+### **8.1. Testing Pyramid**
+
+#### **8.1.1. Unit Tests**
+- **Coverage Target**: 90%+ cho core business logic
+- **Testing Framework**: pytest
+- **Mock Strategy**: Mock external dependencies (LLM APIs, Git operations)
+
+```python
+# Example unit test structure
+class TestCodeParserCoordinator:
+    def test_python_parsing_success(self):
+        # Test successful Python AST parsing
+        pass
+    
+    def test_java_parsing_failure_handling(self):
+        # Test graceful handling of parsing failures
+        pass
+    
+    def test_multi_language_project_detection(self):
+        # Test detection of multiple languages
+        pass
+```
+
+#### **8.1.2. Integration Tests**
+- **Component Integration**: Test interactions between TEAM agents
+- **Database Integration**: Test CKG operations
+- **External Service Integration**: Test with mock LLM responses
+
+#### **8.1.3. End-to-End Tests**
+- **Full Workflow Tests**: Test complete analysis pipelines
+- **UI Tests**: Test Streamlit interface
+- **Performance Tests**: Test with realistic code repositories
+
+### **8.2. Test Data Management**
+
+```yaml
+# Test repositories structure
+test_data/
+  repositories/
+    python_simple/       # Small Python project
+    java_spring_boot/    # Java Spring Boot project
+    flutter_app/         # Dart/Flutter project
+    kotlin_android/      # Kotlin Android project
+    multi_language/      # Project with multiple languages
+  expected_results/
+    python_simple_ckg.json
+    java_spring_findings.json
+    # Expected outputs for verification
+```
+
+### **8.3. Quality Gates**
+
+#### **8.3.1. Code Quality Metrics**
+- **Code Coverage**: Minimum 85%
+- **Cyclomatic Complexity**: Maximum 10 per function
+- **Maintainability Index**: Target > 70
+- **Technical Debt Ratio**: < 5%
+
+#### **8.3.2. Performance Benchmarks**
+- **Repository Analysis Time**: < 5 minutes for repos < 100k LOC
+- **CKG Build Time**: < 2 minutes for medium projects
+- **API Response Time**: < 30 seconds for typical queries
+- **Memory Usage**: < 2GB for analysis of medium projects
+
+### **8.4. Continuous Integration Pipeline**
+
+```yaml
+# .github/workflows/ci.yml
+name: CI Pipeline
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+      
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+      
+      - name: Run linting
+        run: |
+          flake8 src tests
+          black --check src tests
+          mypy src
+      
+      - name: Run unit tests
+        run: |
+          pytest tests/unit --cov=src --cov-report=xml
+      
+      - name: Run integration tests
+        run: |
+          docker-compose -f docker-compose.test.yml up -d
+          pytest tests/integration
+          docker-compose -f docker-compose.test.yml down
+      
+      - name: Upload coverage
+        uses: codecov/codecov-action@v3
+```
+
+---
+
+**Tài liệu này sẽ được cập nhật liên tục trong quá trình phát triển để phản ánh các thay đổi và cải tiến trong thiết kế hệ thống.**
