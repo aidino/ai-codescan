@@ -12,23 +12,24 @@ from typing import Optional, Dict, Any
 import uuid
 
 import streamlit as st
-from loguru import logger
 
-# Add src to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-
-from .user_intent_parser import UserIntentParserAgent
-from .dialog_manager import DialogManagerAgent
-from .task_initiation import TaskInitiationAgent
-from .presentation import PresentationAgent
-
-# Configure page
+# Configure page FIRST (must be first Streamlit command)
 st.set_page_config(
     page_title="AI CodeScan",
     page_icon="🔍",
     layout="wide",
     initial_sidebar_state="expanded"
 )
+
+from loguru import logger
+
+# Add src to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+
+from agents.interaction_tasking.user_intent_parser import UserIntentParserAgent
+from agents.interaction_tasking.dialog_manager import DialogManagerAgent
+from agents.interaction_tasking.task_initiation import TaskInitiationAgent
+from agents.interaction_tasking.presentation import PresentationAgent
 
 
 def initialize_session_state():

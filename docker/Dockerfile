@@ -1,37 +1,11 @@
-# AI CodeScan - Multi-stage Docker build for production
-FROM python:3.12-slim as builder
+# AI CodeScan - Simplified Docker build with pip
+FROM python:3.12-slim
 
-# Set working directory
-WORKDIR /app
-
-# Install system dependencies for building
+# Install system dependencies
 RUN apt-get update && apt-get install -y \
+    git \
+    curl \
     build-essential \
-    git \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install Poetry
-RUN pip install poetry==2.1.3
-
-# Configure Poetry (disable virtual environment as we're already in container)
-ENV POETRY_NO_INTERACTION=1 \
-    POETRY_VENV_IN_PROJECT=1 \
-    POETRY_CACHE_DIR=/tmp/poetry_cache
-
-# Copy Poetry files
-COPY pyproject.toml poetry.lock ./
-
-# Install dependencies
-RUN poetry install --no-dev && rm -rf $POETRY_CACHE_DIR
-
-# Production stage
-FROM python:3.12-slim as production
-
-# Install runtime dependencies
-RUN apt-get update && apt-get install -y \
-    git \
-    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Create non-root user
@@ -40,29 +14,43 @@ RUN useradd --create-home --shell /bin/bash app
 # Set working directory
 WORKDIR /app
 
-# Copy virtual environment from builder stage
-COPY --from=builder /app/.venv /app/.venv
+# Upgrade pip to latest version
+RUN pip install --upgrade pip
 
-# Make sure to use venv
-ENV PATH="/app/.venv/bin:$PATH"
+# Copy requirements file
+COPY requirements.txt .
+
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Verify critical dependencies are installed
+RUN python -c "import click; print('✅ click installed successfully')"
+RUN python -c "import streamlit; print('✅ streamlit installed successfully')"
+RUN python -c "import neo4j; print('✅ neo4j driver installed successfully')"
+RUN python -c "import git; print('✅ gitpython installed successfully')"
 
 # Copy application code
 COPY src/ ./src/
-COPY config.example.py ./config.py
+COPY scripts/ ./scripts/
 
-# Create necessary directories
-RUN mkdir -p logs temp_repos && \
-    chown -R app:app /app
+# Change ownership to app user
+RUN chown -R app:app /app
 
 # Switch to non-root user
 USER app
 
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:8501/_stcore/health || exit 1
+
 # Expose Streamlit port
 EXPOSE 8501
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-    CMD python src/main.py version || exit 1
+# Set environment variables
+ENV PYTHONPATH=/app
+ENV STREAMLIT_SERVER_HEADLESS=true
+ENV STREAMLIT_SERVER_ENABLE_CORS=false
+ENV STREAMLIT_SERVER_ENABLE_XSRF_PROTECTION=false
 
-# Default command runs Streamlit web interface
-CMD ["python", "src/main.py", "web"] 
+# Run Streamlit application
+CMD ["python", "-m", "streamlit", "run", "src/agents/interaction_tasking/web_ui.py", "--server.port=8501", "--server.address=0.0.0.0"] 

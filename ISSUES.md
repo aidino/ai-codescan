@@ -81,27 +81,61 @@ LLM API rate limits và service availability.
 - Support multiple LLM providers
 - Implement graceful degradation khi LLM không available
 
+### **Docker Build Issues**
+
+#### **Issue 1: Poetry Dependencies Installation Failed in Docker**
+
+**ISSUE:**
+Poetry không thể install dependencies trong Docker container, đặc biệt là module `click` và các dependencies khác. Lỗi `ModuleNotFoundError: No module named 'click'` xảy ra khi chạy application.
+
+**Symptoms:**
+- Docker build thành công nhưng Python modules không được install
+- Container restart liên tục do dependency missing
+- Health checks fail do modules không tồn tại
+- `poetry install` command chạy nhưng không install packages vào system Python
+
+**ROOT CAUSE:**
+- Poetry version compatibility issues với Python 3.12
+- Virtual environment configuration conflicts trong Docker
+- Poetry cache và lock file synchronization problems
+
+**SOLUTION:**
+Chuyển đổi từ Poetry sang pip với requirements.txt:
+
+1. **Tạo requirements.txt** từ pyproject.toml dependencies:
+```bash
+# Tạo file requirements.txt với tất cả dependencies
+# Core packages: streamlit, neo4j, gitpython, openai, langchain, etc.
+```
+
+2. **Simplify Dockerfile** loại bỏ Poetry:
+```dockerfile
+# Thay thế Poetry setup
+RUN pip install --upgrade pip
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Verify installation
+RUN python -c "import click; print('✅ click installed successfully')"
+RUN python -c "import streamlit; print('✅ streamlit installed successfully')"
+```
+
+3. **Update docker-compose.yml** nếu cần thiết để phù hợp với new Dockerfile
+
+**VERIFICATION:**
+- All containers start healthy: ✅
+- Streamlit accessible at localhost:8501: ✅  
+- Dependencies properly installed: ✅
+- No module import errors: ✅
+
+**PREVENTION:**
+- Use pip với requirements.txt cho Docker environments
+- Keep Poetry cho local development nếu muốn
+- Always verify critical imports trong Dockerfile
+- Use explicit package versions trong requirements.txt
+
 ---
 
 ## **Future Issue Tracking Template**
 
 ```
-==========
-
-ISSUE:
-<Mô tả chi tiết vấn đề gặp phải>
-
-RESOLVE:
-<Các bước đã thực hiện để giải quyết>
-
-Status: [OPEN/IN_PROGRESS/RESOLVED/DEFERRED]
-Date: <Ngày phát hiện>
-Resolved Date: <Ngày giải quyết>
-Impact: [LOW/MEDIUM/HIGH/CRITICAL]
-
-==========
-```
-
----
-
-**Note:** File này sẽ được cập nhật liên tục trong quá trình phát triển để theo dõi các vấn đề mới và các giải pháp tương ứng. 

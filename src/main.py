@@ -118,7 +118,7 @@ def web() -> None:
             sys.argv = original_argv
             
     except ImportError:
-        click.echo("❌ Streamlit not installed. Please run: poetry install")
+        click.echo("❌ Streamlit not installed. Please run: pip install -r requirements.txt")
         sys.exit(1)
     except Exception as e:
         logger.error(f"Failed to start web interface: {e}")
@@ -145,7 +145,7 @@ def test() -> None:
         exit_code = pytest.main(['-v', 'tests/'])
         sys.exit(exit_code)
     except ImportError:
-        click.echo("pytest not installed. Please run: poetry install")
+        click.echo("pytest not installed. Please run: pip install -r requirements.txt")
         sys.exit(1)
 
 

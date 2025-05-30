@@ -101,10 +101,8 @@ ipython_config.py
 #uv.lock
 
 # poetry
-#   Similar to Pipfile.lock, it is generally recommended to include poetry.lock in version control.
-#   This is especially recommended for binary packages to ensure reproducibility, and is more
-#   commonly ignored for libraries.
-#   https://python-poetry.org/docs/basic-usage/#commit-your-poetrylock-file-to-version-control
+# Poetry lock file is normally committed but we're using pip now
+# If you need to switch back to Poetry, uncomment the line below:
 #poetry.lock
 
 # pdm

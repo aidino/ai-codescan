@@ -1,150 +1,189 @@
-# AI CodeScan 🔍🤖
+# AI CodeScan
 
-AI-powered code review assistant with multi-agent architecture for comprehensive code analysis across multiple programming languages.
+AI-powered code review assistant với multi-agent architecture
 
-## 🌟 Features
+## ✨ Features
 
-- **Multi-Agent Architecture**: Orchestrated agents for different analysis tasks
-- **Multi-Language Support**: Python, Java, Dart, Kotlin (planned)
-- **Graph-Based Code Knowledge**: Neo4j-powered code knowledge graph (CKG)
-- **AI-Powered Analysis**: LLM integration for intelligent code insights
-- **Web Interface**: Modern Streamlit-based UI
-- **Docker-Ready**: Containerized deployment with Docker Compose
-- **Extensible**: Plugin architecture for custom analysis tools
+- 🔍 **Automated Code Analysis**: Python repository analysis với static tools
+- 🌐 **Modern Web UI**: Interactive Streamlit interface
+- 🤖 **Multi-Agent Architecture**: LangGraph-based agent orchestration
+- 📊 **Knowledge Graph**: Neo4j-powered code relationship mapping
+- 🧠 **LLM Integration**: AI-powered insights và explanations
+- 🐳 **Containerized**: Docker-first development và deployment
 
-## 🚀 Quick Start
+## ⚙️ Environment Configuration
 
-### Prerequisites
-
-- Python 3.12+ 
-- Docker & Docker Compose
-- Poetry (recommended) or pip
-
-### 1. Clone and Setup
-
-```bash
-git clone <repository-url>
-cd ai-codescan
-./scripts/setup.sh
-```
-
-### 2. Configure Environment
+### Step 1: Environment Setup
 
 ```bash
 # Copy environment template
 cp .env.example .env
 
-# Edit with your OpenAI API key
-nano .env
+# Edit .env file với your settings
+nano .env  # or vim, code, etc.
 ```
 
-### 3. Start Services
+### Step 2: Required Configuration
+
+**🔑 OpenAI API Key (Required)**
+```bash
+# Get your API key from: https://platform.openai.com/api-keys
+OPENAI_API_KEY=sk-your-actual-openai-api-key-here
+```
+
+**🔒 Security Keys (Auto-generated)**
+```bash
+# These are already generated in .env, change in production:
+SECRET_KEY=<random-secure-key>
+PAT_ENCRYPTION_KEY=<random-secure-key>
+```
+
+### Step 3: Database Configuration (Auto-configured)
+
+Docker Compose sẽ tự động setup:
+- **Neo4j**: `bolt://localhost:7687` (neo4j/ai_codescan_password)
+- **Redis**: `localhost:6379` (no password)
+
+### Environment Variables Reference
+
+| Variable | Description | Default | Required |
+|----------|-------------|---------|----------|
+| `OPENAI_API_KEY` | OpenAI API key cho LLM features | - | ✅ |
+| `AI_CODESCAN_ENV` | Environment mode | development | ❌ |
+| `NEO4J_PASSWORD` | Neo4j database password | ai_codescan_password | ❌ |
+| `MAX_REPOSITORY_SIZE_MB` | Max repo size limit | 500 | ❌ |
+| `CLONE_TIMEOUT_SECONDS` | Git clone timeout | 300 | ❌ |
+
+## 🚀 Quick Start
+
+### Prerequisites
+
+- Python 3.12+
+- Docker & Docker Compose
+- OpenAI API Key
+
+### Docker (Recommended)
 
 ```bash
-# Start all services
-docker-compose up -d
+# 1. Clone repository
+git clone <repository-url>
+cd ai-codescan
 
-# Or start only Neo4j and Redis
-docker-compose up neo4j redis -d
+# 2. Setup environment (see Environment Configuration section above)
+cp .env.example .env
+# Edit .env and add your OPENAI_API_KEY
+
+# 3. Start services
+chmod +x scripts/setup.sh
+./scripts/setup.sh
+
+# Or manually:
+docker-compose up --build -d
 ```
 
-### 4. Run Application
+**Access Applications**:
+- 🌐 Web UI: http://localhost:8501
+- 📊 Neo4j Browser: http://localhost:7474 (neo4j/ai_codescan_password)
+
+### Local Development
 
 ```bash
-# Web Interface (recommended)
-poetry run python src/main.py web
+# 1. Setup environment
+cp .env.example .env
+# Edit .env and add your OPENAI_API_KEY
 
-# CLI Interface
-poetry run python src/main.py analyze --url https://github.com/user/repo
+# 2. Install dependencies
+pip install -r requirements.txt
+
+# 3. Run application
+python src/main.py web
 ```
 
-### 5. Access Interfaces
+## 📋 Requirements
 
-- **AI CodeScan Web UI**: http://localhost:8501
-- **Neo4j Browser**: http://localhost:7474 (neo4j/ai_codescan_password)
-- **Redis**: localhost:6379
+- Python 3.12+
+- Docker & Docker Compose
+- Git
 
 ## 🏗️ Architecture
 
+### Multi-Agent System
+
+```
+┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
+│  Interaction &  │    │   Orchestrator   │    │ Data Acquisition│
+│     Tasking     │◄──►│      Agent       │◄──►│     Team        │
+│   (Web UI)      │    │   (LangGraph)    │    │  (Git Ops)      │
+└─────────────────┘    └──────────────────┘    └─────────────────┘
+                                │
+                ┌───────────────┼───────────────┐
+                ▼               ▼               ▼
+        ┌──────────────┐ ┌─────────────┐ ┌──────────────┐
+        │ CKG Operations│ │Code Analysis│ │ LLM Services │
+        │   (Neo4j)    │ │ (Linting)   │ │  (OpenAI)    │
+        └──────────────┘ └─────────────┘ └──────────────┘
+                                │
+                        ┌───────▼────────┐
+                        │ Synthesis &    │
+                        │   Reporting    │
+                        └────────────────┘
+```
+
 ### Agent Teams
 
-1. **Orchestrator Agent**: Central coordination and workflow management
-2. **Interaction & Tasking Team**: Web UI and user interaction
-3. **Data Acquisition Team**: Repository cloning and preparation
-4. **CKG Operations Team**: Code knowledge graph construction
-5. **Code Analysis Team**: Static analysis and architectural insights
-6. **LLM Services Team**: AI-powered analysis and explanations
-7. **Synthesis & Reporting Team**: Result aggregation and presentation
+1. **🎯 Orchestrator**: Central workflow coordination
+2. **💻 Interaction & Tasking**: Web UI và user interaction  
+3. **📥 Data Acquisition**: Repository cloning và preparation
+4. **🕸️ CKG Operations**: Code knowledge graph construction
+5. **🔍 Code Analysis**: Static analysis và architectural insights
+6. **🧠 LLM Services**: AI-powered analysis và explanations
+7. **📊 Synthesis & Reporting**: Result aggregation và presentation
 
-### Technology Stack
+## 🛠️ Tech Stack
 
-- **Backend**: Python 3.12, Poetry, Pydantic
-- **Web UI**: Streamlit
-- **Database**: Neo4j (graph), Redis (cache)
-- **LLM**: OpenAI GPT-4
-- **Git Operations**: GitPython, PyGithub
-- **Code Analysis**: Flake8, Pylint, Black, MyPy
-- **Containerization**: Docker, Docker Compose
+- **Frontend**: Streamlit, HTML/CSS, JavaScript
+- **Backend**: Python 3.12, pip, Pydantic
+- **Database**: Neo4j Community, Redis
+- **AI/ML**: OpenAI API, LangChain, LangGraph
+- **DevOps**: Docker, Docker Compose
+- **Code Analysis**: Flake8, Pylint, MyPy, Black
+- **Version Control**: Git, GitPython, PyGithub
 
-## 📋 Development Status
-
-### ✅ Completed (v0.1.0)
-
-- [x] Task 0.1: Comprehensive design documentation
-- [x] Task 0.2: Core development environment setup
-  - Python 3.12.9 with Poetry
-  - Docker containerization
-  - Neo4j and Redis integration
-  - CLI framework with Click
-  - Project structure and dependencies
-
-### 🚧 In Progress
-
-- [ ] Task 0.3: Agent framework research and selection
-- [ ] Task 0.4: Project structure refinement  
-- [ ] Task 0.5-0.7: Docker and Neo4j optimization
-
-### 📋 Roadmap
-
-- **Phase 1**: Basic Python analysis with Streamlit UI
-- **Phase 2**: Multi-language support and architectural analysis
-- **Phase 3**: LLM integration and PR analysis
-- **Phase 4**: Advanced diagramming and UX improvements
-- **Phase 5**: Research and continuous improvements
-
-## 🛠️ Development
+## 💻 Development
 
 ### Environment Setup
 
 ```bash
 # Install dependencies
-poetry install
+pip install -r requirements.txt
 
-# Activate virtual environment
-poetry shell
+# Activate virtual environment (optional)
+python -m venv venv
+source venv/bin/activate  # Linux/Mac
+# venv\Scripts\activate   # Windows
 
 # Run tests
-poetry run pytest
+pytest
 
 # Code formatting
-poetry run black src/
-poetry run isort src/
+black src/
+isort src/
 
 # Type checking
-poetry run mypy src/
+mypy src/
 ```
 
 ### Testing
 
 ```bash
 # Run all tests
-poetry run python src/main.py test
+python src/main.py test
 
 # Test Neo4j connection
-poetry run python scripts/test_neo4j.py
+python scripts/test_neo4j.py
 
-# Test specific component
-poetry run pytest tests/unit/test_orchestrator.py
+# Test specific modules
+pytest tests/unit/test_orchestrator.py
 ```
 
 ### Docker Development
@@ -153,101 +192,98 @@ poetry run pytest tests/unit/test_orchestrator.py
 # Build and run
 docker-compose up --build
 
-# Run only specific services
-docker-compose up neo4j redis -d
-
 # View logs
 docker-compose logs -f ai-codescan
+
+# Execute commands in container
+docker-compose exec ai-codescan bash
 
 # Clean up
 docker-compose down -v
 ```
 
-## 📖 Usage Examples
+## 📖 Usage
 
-### CLI Usage
+### Command Line Interface
 
 ```bash
-# Analyze a repository
-poetry run python src/main.py analyze --url https://github.com/user/repo
+# Repository analysis
+python src/main.py analyze --url https://github.com/user/repo
 
-# Review a Pull Request
-poetry run python src/main.py review-pr --url https://github.com/user/repo --pr-id 123
+# PR review  
+python src/main.py review-pr --url https://github.com/user/repo --pr-id 123
 
-# Launch web interface
-poetry run python src/main.py web
+# Web interface
+python src/main.py web
 
-# Show version
-poetry run python src/main.py version
+# Version info
+python src/main.py version
 ```
 
 ### Web Interface
 
-1. Navigate to http://localhost:8501
-2. Enter repository URL
-3. Select analysis options
-4. View comprehensive results
+1. 🌐 Navigate to http://localhost:8501
+2. 📝 Choose analysis type:
+   - **Repository Review**: Full codebase analysis
+   - **PR Review**: Pull request analysis  
+   - **Code Q&A**: Interactive code questions
+3. 🔗 Enter repository URL (GitHub, GitLab, BitBucket)
+4. ⚙️ Configure analysis options
+5. 📊 Review results with interactive charts và exports
 
-## 🔧 Configuration
+## 🎯 Supported Languages
 
-Key configuration options in `config.py`:
+- ✅ **Python**: Flake8, Pylint, MyPy, Black
+- 🚧 **Java**: Checkstyle, PMD (planned)
+- 🚧 **Dart**: Dart Analyzer (planned)  
+- 🚧 **Kotlin**: Detekt, Ktlint (planned)
 
-```python
-# OpenAI Configuration
-OPENAI_API_KEY = "your-api-key"
-OPENAI_MODEL = "gpt-4"
+## 🗃️ Database Schema
 
-# Neo4j Configuration  
-NEO4J_URI = "bolt://localhost:7687"
-NEO4J_PASSWORD = "ai_codescan_password"
+- **Neo4j**: Code Knowledge Graph (CKG)
+  - Nodes: Files, Classes, Functions, Variables
+  - Relationships: IMPORTS, CALLS, DEFINES, INHERITS
+- **Redis**: Session management, caching
 
-# Analysis Settings
-MAX_REPOSITORY_SIZE_MB = 500
-ANALYSIS_TIMEOUT_SECONDS = 1800
-```
+## 📈 Development Status
 
-## 📁 Project Structure
+### ✅ Completed
 
-```
-ai-codescan/
-├── src/                    # Source code
-│   ├── core/              # Core orchestration
-│   ├── agents/            # Agent implementations
-│   └── main.py           # CLI entry point
-├── tests/                 # Test suites
-├── docker/               # Docker configurations
-├── scripts/              # Utility scripts
-├── docs/                 # Documentation
-├── temp_repos/           # Temporary repository storage
-└── logs/                 # Application logs
-```
+- ✅ **Task 0.1-0.7**: Project foundation và Docker setup
+- ✅ **Task 1.1**: LangGraph orchestrator implementation
+- ✅ **Task 1.2**: Complete Streamlit Web UI với 4 agents
+- ✅ **Docker Infrastructure**: Fixed dependency issues, all containers healthy
+
+### 🚧 In Progress
+
+- 🔄 **Task 1.3**: Data Acquisition team implementation
+
+### 📋 Roadmap
+
+- **Phase 1**: Basic Python analysis with Web UI ✅
+- **Phase 2**: Multi-language support và architectural analysis
+- **Phase 3**: LLM integration và PR analysis
+- **Phase 4**: Advanced diagramming và UX improvements
+- **Phase 5**: Research và continuous improvements
 
 ## 🤝 Contributing
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests
-5. Run quality checks
-6. Submit a pull request
+1. Fork repository
+2. Create feature branch
+3. Follow coding standards (Black, isort, mypy)
+4. Write tests cho new features
+5. Submit pull request
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+[Your chosen license]
 
 ## 🆘 Support
 
-- **Documentation**: Check [docs/DESIGN.md](docs/DESIGN.md) for architecture details
-- **Issues**: Track progress in [TASK.md](TASK.md)
-- **Problems**: See [ISSUES.md](ISSUES.md) for known issues and solutions
+- 📚 Documentation: [Link to docs]
+- 🐛 Issues: [GitHub Issues]
+- 💬 Discussions: [GitHub Discussions]
 
-## 🎯 Vision
+---
 
-AI CodeScan aims to revolutionize code review processes by combining:
-- Advanced static analysis
-- AI-powered insights  
-- Architectural understanding
-- Interactive visualizations
-- Multi-language support
-
-Our goal is to make code review more efficient, comprehensive, and accessible to development teams of all sizes. 
+**Made with ❤️ for better code quality**

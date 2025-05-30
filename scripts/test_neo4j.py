@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 """
-Test Neo4j Connection Script
+Test Neo4j connection and basic operations.
 
-This script tests the connection to Neo4j database.
-Usage: poetry run python scripts/test_neo4j.py
+Usage: python scripts/test_neo4j.py
 """
 
 import os
@@ -79,5 +78,5 @@ try:
             
 except ImportError as e:
     print(f"❌ Import error: {e}")
-    print("Make sure you have installed dependencies: poetry install")
+    print("Make sure you have installed dependencies: pip install -r requirements.txt")
     sys.exit(1) 
