@@ -149,5 +149,146 @@ def test() -> None:
         sys.exit(1)
 
 
+@cli.command("auth-web")
+def auth_web() -> None:
+    """Launch the authenticated web interface using Streamlit."""
+    logger.info("Starting authenticated web interface...")
+    
+    try:
+        import streamlit.web.cli as st_cli
+        import sys
+        import os
+        
+        # Path to the authenticated Streamlit app
+        app_path = os.path.join(
+            os.path.dirname(__file__), 
+            'agents', 
+            'interaction_tasking', 
+            'auth_web_ui.py'
+        )
+        
+        if not os.path.exists(app_path):
+            click.echo(f"❌ Authenticated Streamlit app not found at: {app_path}")
+            sys.exit(1)
+        
+        # Set up Streamlit arguments
+        streamlit_args = [
+            'streamlit',
+            'run',
+            app_path,
+            '--server.port=8502',  # Different port để avoid conflict
+            '--server.address=0.0.0.0',
+            '--browser.gatherUsageStats=false',
+            '--logger.level=warning'
+        ]
+        
+        # Replace sys.argv for Streamlit
+        original_argv = sys.argv.copy()
+        sys.argv = streamlit_args
+        
+        try:
+            click.echo("🔍 Starting AI CodeScan Authenticated Web UI...")
+            click.echo("📍 URL: http://localhost:8502")
+            click.echo("👤 Default admin: username='admin', password='admin123456'")
+            click.echo("⚠️  Please change default password after first login!")
+            
+            # Run Streamlit
+            st_cli.main()
+        finally:
+            # Restore original argv
+            sys.argv = original_argv
+            
+    except ImportError:
+        click.echo("❌ Streamlit not installed. Please run: pip install -r requirements.txt")
+        sys.exit(1)
+    except Exception as e:
+        logger.error(f"Failed to start authenticated web interface: {e}")
+        click.echo(f"❌ Failed to start authenticated web interface: {e}")
+        sys.exit(1)
+
+
+@cli.command("setup-auth")
+@click.option('--db-path', default='data/ai_codescan.db', 
+              help='Path to SQLite database file')
+def setup_auth(db_path: str) -> None:
+    """Setup authentication database với initial users."""
+    logger.info("Setting up authentication database...")
+    
+    try:
+        # Import auth setup
+        sys.path.insert(0, str(Path(__file__).parent.parent))
+        from scripts.setup_auth_database import setup_auth_database
+        
+        click.echo("🔐 Setting up authentication database...")
+        success = setup_auth_database(db_path)
+        
+        if success:
+            click.echo("✅ Authentication database setup completed!")
+            click.echo(f"📁 Database location: {db_path}")
+            click.echo("👤 Default admin: username='admin', password='admin123456'")
+            click.echo("👤 Test user: username='test_user', password='testpassword'")
+            click.echo("⚠️  Please change default passwords immediately!")
+        else:
+            click.echo("❌ Authentication database setup failed!")
+            sys.exit(1)
+            
+    except Exception as e:
+        logger.error(f"Auth setup failed: {e}")
+        click.echo(f"❌ Authentication setup failed: {e}")
+        sys.exit(1)
+
+
+@cli.command()
+@click.option('--host', default='localhost', help='Neo4j host')
+@click.option('--port', default=7687, help='Neo4j port')
+@click.option('--username', default='neo4j', help='Neo4j username')
+@click.option('--password', prompt=True, hide_input=True, help='Neo4j password')
+def setup_neo4j(host: str, port: int, username: str, password: str) -> None:
+    """Setup Neo4j database schemas and constraints."""
+    logger.info("Setting up Neo4j database...")
+    
+    try:
+        from scripts.setup_neo4j_ckg import setup_neo4j_database
+        
+        click.echo("🗄️ Setting up Neo4j database...")
+        success = setup_neo4j_database(
+            uri=f"bolt://{host}:{port}",
+            user=username,
+            password=password
+        )
+        
+        if success:
+            click.echo("✅ Neo4j database setup completed!")
+        else:
+            click.echo("❌ Neo4j database setup failed!")
+            sys.exit(1)
+            
+    except Exception as e:
+        logger.error(f"Neo4j setup failed: {e}")
+        click.echo(f"❌ Neo4j setup failed: {e}")
+        sys.exit(1)
+
+
+@cli.command()
+@click.option('--port', default=8501, help='Port to run health check on')
+def health(port: int) -> None:
+    """Check health of running services."""
+    import requests
+    import time
+    
+    try:
+        # Check Streamlit health
+        response = requests.get(f"http://localhost:{port}/_stcore/health", timeout=5)
+        if response.status_code == 200:
+            click.echo(f"✅ Streamlit service healthy on port {port}")
+        else:
+            click.echo(f"⚠️ Streamlit service returned status {response.status_code}")
+    except requests.exceptions.RequestException:
+        click.echo(f"❌ Streamlit service not responding on port {port}")
+    
+    # Add more health checks as needed
+    click.echo(f"🕐 Health check completed at {time.strftime('%Y-%m-%d %H:%M:%S')}")
+
+
 if __name__ == '__main__':
     cli() 
