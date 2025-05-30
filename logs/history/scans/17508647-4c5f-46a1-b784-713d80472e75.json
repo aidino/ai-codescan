@@ -1,0 +1,392 @@
+{
+  "repository_url": "https://github.com/aidino/novaguard-ai2",
+  "repository_name": "novaguard-ai2",
+  "analysis_type": "Repository Analysis",
+  "findings_count": 37,
+  "severity_breakdown": {
+    "error": 9,
+    "warning": 6,
+    "info": 22
+  },
+  "summary": "Completed analysis of novaguard-ai2",
+  "detailed_results": {
+    "repository": "novaguard-ai2",
+    "repository_url": "https://github.com/aidino/novaguard-ai2",
+    "analysis_type": "Repository Review",
+    "timestamp": "2025-05-30 19:00:11",
+    "total_issues": 37,
+    "files_analyzed": 39,
+    "lines_of_code": 9930,
+    "quality_score": 94,
+    "quality_delta": -2,
+    "severity_counts": {
+      "error": 9,
+      "warning": 6,
+      "info": 22
+    },
+    "linting_issues": [
+      {
+        "file": "views.py",
+        "line": 120,
+        "severity": "error",
+        "message": "Mock error issue #1 in novaguard-ai2",
+        "rule": "ERROR256"
+      },
+      {
+        "file": "main.py",
+        "line": 386,
+        "severity": "error",
+        "message": "Mock error issue #2 in novaguard-ai2",
+        "rule": "ERROR431"
+      },
+      {
+        "file": "models.py",
+        "line": 403,
+        "severity": "error",
+        "message": "Mock error issue #3 in novaguard-ai2",
+        "rule": "ERROR383"
+      },
+      {
+        "file": "config.py",
+        "line": 334,
+        "severity": "error",
+        "message": "Mock error issue #4 in novaguard-ai2",
+        "rule": "ERROR775"
+      },
+      {
+        "file": "config.py",
+        "line": 440,
+        "severity": "error",
+        "message": "Mock error issue #5 in novaguard-ai2",
+        "rule": "ERROR761"
+      },
+      {
+        "file": "utils.py",
+        "line": 156,
+        "severity": "error",
+        "message": "Mock error issue #6 in novaguard-ai2",
+        "rule": "ERROR724"
+      },
+      {
+        "file": "utils.py",
+        "line": 160,
+        "severity": "error",
+        "message": "Mock error issue #7 in novaguard-ai2",
+        "rule": "ERROR177"
+      },
+      {
+        "file": "views.py",
+        "line": 25,
+        "severity": "error",
+        "message": "Mock error issue #8 in novaguard-ai2",
+        "rule": "ERROR372"
+      },
+      {
+        "file": "config.py",
+        "line": 440,
+        "severity": "error",
+        "message": "Mock error issue #9 in novaguard-ai2",
+        "rule": "ERROR136"
+      },
+      {
+        "file": "utils.py",
+        "line": 461,
+        "severity": "warning",
+        "message": "Mock warning issue #1 in novaguard-ai2",
+        "rule": "WARNING375"
+      },
+      {
+        "file": "views.py",
+        "line": 101,
+        "severity": "warning",
+        "message": "Mock warning issue #2 in novaguard-ai2",
+        "rule": "WARNING502"
+      },
+      {
+        "file": "models.py",
+        "line": 283,
+        "severity": "warning",
+        "message": "Mock warning issue #3 in novaguard-ai2",
+        "rule": "WARNING767"
+      },
+      {
+        "file": "config.py",
+        "line": 478,
+        "severity": "warning",
+        "message": "Mock warning issue #4 in novaguard-ai2",
+        "rule": "WARNING528"
+      },
+      {
+        "file": "main.py",
+        "line": 139,
+        "severity": "warning",
+        "message": "Mock warning issue #5 in novaguard-ai2",
+        "rule": "WARNING761"
+      },
+      {
+        "file": "views.py",
+        "line": 195,
+        "severity": "warning",
+        "message": "Mock warning issue #6 in novaguard-ai2",
+        "rule": "WARNING820"
+      },
+      {
+        "file": "views.py",
+        "line": 282,
+        "severity": "info",
+        "message": "Mock info issue #1 in novaguard-ai2",
+        "rule": "INFO267"
+      },
+      {
+        "file": "views.py",
+        "line": 382,
+        "severity": "info",
+        "message": "Mock info issue #2 in novaguard-ai2",
+        "rule": "INFO137"
+      },
+      {
+        "file": "utils.py",
+        "line": 269,
+        "severity": "info",
+        "message": "Mock info issue #3 in novaguard-ai2",
+        "rule": "INFO670"
+      },
+      {
+        "file": "main.py",
+        "line": 118,
+        "severity": "info",
+        "message": "Mock info issue #4 in novaguard-ai2",
+        "rule": "INFO807"
+      },
+      {
+        "file": "main.py",
+        "line": 75,
+        "severity": "info",
+        "message": "Mock info issue #5 in novaguard-ai2",
+        "rule": "INFO689"
+      },
+      {
+        "file": "main.py",
+        "line": 18,
+        "severity": "info",
+        "message": "Mock info issue #6 in novaguard-ai2",
+        "rule": "INFO108"
+      },
+      {
+        "file": "config.py",
+        "line": 117,
+        "severity": "info",
+        "message": "Mock info issue #7 in novaguard-ai2",
+        "rule": "INFO564"
+      },
+      {
+        "file": "models.py",
+        "line": 401,
+        "severity": "info",
+        "message": "Mock info issue #8 in novaguard-ai2",
+        "rule": "INFO299"
+      },
+      {
+        "file": "main.py",
+        "line": 400,
+        "severity": "info",
+        "message": "Mock info issue #9 in novaguard-ai2",
+        "rule": "INFO962"
+      },
+      {
+        "file": "views.py",
+        "line": 15,
+        "severity": "info",
+        "message": "Mock info issue #10 in novaguard-ai2",
+        "rule": "INFO762"
+      },
+      {
+        "file": "main.py",
+        "line": 49,
+        "severity": "info",
+        "message": "Mock info issue #11 in novaguard-ai2",
+        "rule": "INFO715"
+      },
+      {
+        "file": "utils.py",
+        "line": 365,
+        "severity": "info",
+        "message": "Mock info issue #12 in novaguard-ai2",
+        "rule": "INFO167"
+      },
+      {
+        "file": "config.py",
+        "line": 263,
+        "severity": "info",
+        "message": "Mock info issue #13 in novaguard-ai2",
+        "rule": "INFO346"
+      },
+      {
+        "file": "utils.py",
+        "line": 175,
+        "severity": "info",
+        "message": "Mock info issue #14 in novaguard-ai2",
+        "rule": "INFO237"
+      },
+      {
+        "file": "models.py",
+        "line": 144,
+        "severity": "info",
+        "message": "Mock info issue #15 in novaguard-ai2",
+        "rule": "INFO474"
+      },
+      {
+        "file": "views.py",
+        "line": 271,
+        "severity": "info",
+        "message": "Mock info issue #16 in novaguard-ai2",
+        "rule": "INFO624"
+      },
+      {
+        "file": "config.py",
+        "line": 238,
+        "severity": "info",
+        "message": "Mock info issue #17 in novaguard-ai2",
+        "rule": "INFO749"
+      },
+      {
+        "file": "views.py",
+        "line": 312,
+        "severity": "info",
+        "message": "Mock info issue #18 in novaguard-ai2",
+        "rule": "INFO377"
+      },
+      {
+        "file": "config.py",
+        "line": 276,
+        "severity": "info",
+        "message": "Mock info issue #19 in novaguard-ai2",
+        "rule": "INFO300"
+      },
+      {
+        "file": "views.py",
+        "line": 237,
+        "severity": "info",
+        "message": "Mock info issue #20 in novaguard-ai2",
+        "rule": "INFO360"
+      },
+      {
+        "file": "main.py",
+        "line": 453,
+        "severity": "info",
+        "message": "Mock info issue #21 in novaguard-ai2",
+        "rule": "INFO890"
+      },
+      {
+        "file": "models.py",
+        "line": 52,
+        "severity": "info",
+        "message": "Mock info issue #22 in novaguard-ai2",
+        "rule": "INFO286"
+      }
+    ],
+    "architectural_issues": [],
+    "complexity": {
+      "Cyclomatic Complexity": "7.7",
+      "Maintainability Index": "71.4",
+      "Technical Debt Ratio": "17.9%"
+    },
+    "language_distribution": {
+      "Python": 3592,
+      "JavaScript": 1463,
+      "CSS": 705,
+      "HTML": 371
+    },
+    "file_sizes": [
+      [
+        "file0.py",
+        279
+      ],
+      [
+        "file1.py",
+        58
+      ],
+      [
+        "file2.py",
+        325
+      ],
+      [
+        "file3.py",
+        177
+      ],
+      [
+        "file4.py",
+        83
+      ],
+      [
+        "file5.py",
+        73
+      ],
+      [
+        "file6.py",
+        234
+      ],
+      [
+        "file7.py",
+        191
+      ],
+      [
+        "file8.py",
+        155
+      ],
+      [
+        "file9.py",
+        225
+      ],
+      [
+        "file10.py",
+        373
+      ],
+      [
+        "file11.py",
+        117
+      ],
+      [
+        "file12.py",
+        153
+      ],
+      [
+        "file13.py",
+        75
+      ],
+      [
+        "file14.py",
+        273
+      ],
+      [
+        "file15.py",
+        464
+      ],
+      [
+        "file16.py",
+        455
+      ],
+      [
+        "file17.py",
+        170
+      ],
+      [
+        "file18.py",
+        217
+      ],
+      [
+        "file19.py",
+        55
+      ]
+    ],
+    "summary": "\n        Phân tích repository novaguard-ai2 hoàn tất. \n        \n        Tổng quan:\n        - Tổng số issues: 37\n        - Files được phân tích: 17\n        - Chất lượng code: Trung bình\n        \n        Kết quả cho thấy codebase có mức độ chất lượng trung bình \n        với một số vấn đề cần được xem xét.\n        ",
+    "recommendations": [
+      "Xem xét refactor các function có độ phức tạp cao",
+      "Thêm type hints cho các function thiếu",
+      "Cập nhật docstrings cho các public methods",
+      "Tối ưu hóa import statements",
+      "Xem xét sử dụng linting tools trong CI/CD pipeline"
+    ]
+  },
+  "timestamp": "2025-05-30 19:00:11"
+}

@@ -1,0 +1,357 @@
+{
+  "repository_url": "https://github.com/aidino/python-crash-course",
+  "repository_name": "python-crash-course",
+  "analysis_type": "Repository Analysis",
+  "findings_count": 32,
+  "severity_breakdown": {
+    "error": 4,
+    "warning": 12,
+    "info": 16
+  },
+  "summary": "Completed analysis of python-crash-course",
+  "detailed_results": {
+    "repository": "python-crash-course",
+    "repository_url": "https://github.com/aidino/python-crash-course",
+    "analysis_type": "Repository Review",
+    "timestamp": "2025-05-30 18:20:09",
+    "total_issues": 32,
+    "files_analyzed": 17,
+    "lines_of_code": 1127,
+    "quality_score": 76,
+    "quality_delta": -3,
+    "severity_counts": {
+      "error": 4,
+      "warning": 12,
+      "info": 16
+    },
+    "linting_issues": [
+      {
+        "file": "config.py",
+        "line": 161,
+        "severity": "error",
+        "message": "Mock error issue #1 in python-crash-course",
+        "rule": "ERROR419"
+      },
+      {
+        "file": "models.py",
+        "line": 475,
+        "severity": "error",
+        "message": "Mock error issue #2 in python-crash-course",
+        "rule": "ERROR743"
+      },
+      {
+        "file": "main.py",
+        "line": 248,
+        "severity": "error",
+        "message": "Mock error issue #3 in python-crash-course",
+        "rule": "ERROR163"
+      },
+      {
+        "file": "models.py",
+        "line": 84,
+        "severity": "error",
+        "message": "Mock error issue #4 in python-crash-course",
+        "rule": "ERROR468"
+      },
+      {
+        "file": "views.py",
+        "line": 376,
+        "severity": "warning",
+        "message": "Mock warning issue #1 in python-crash-course",
+        "rule": "WARNING891"
+      },
+      {
+        "file": "utils.py",
+        "line": 185,
+        "severity": "warning",
+        "message": "Mock warning issue #2 in python-crash-course",
+        "rule": "WARNING400"
+      },
+      {
+        "file": "views.py",
+        "line": 180,
+        "severity": "warning",
+        "message": "Mock warning issue #3 in python-crash-course",
+        "rule": "WARNING843"
+      },
+      {
+        "file": "models.py",
+        "line": 474,
+        "severity": "warning",
+        "message": "Mock warning issue #4 in python-crash-course",
+        "rule": "WARNING371"
+      },
+      {
+        "file": "config.py",
+        "line": 254,
+        "severity": "warning",
+        "message": "Mock warning issue #5 in python-crash-course",
+        "rule": "WARNING902"
+      },
+      {
+        "file": "models.py",
+        "line": 118,
+        "severity": "warning",
+        "message": "Mock warning issue #6 in python-crash-course",
+        "rule": "WARNING137"
+      },
+      {
+        "file": "utils.py",
+        "line": 83,
+        "severity": "warning",
+        "message": "Mock warning issue #7 in python-crash-course",
+        "rule": "WARNING822"
+      },
+      {
+        "file": "models.py",
+        "line": 494,
+        "severity": "warning",
+        "message": "Mock warning issue #8 in python-crash-course",
+        "rule": "WARNING757"
+      },
+      {
+        "file": "models.py",
+        "line": 371,
+        "severity": "warning",
+        "message": "Mock warning issue #9 in python-crash-course",
+        "rule": "WARNING786"
+      },
+      {
+        "file": "main.py",
+        "line": 20,
+        "severity": "warning",
+        "message": "Mock warning issue #10 in python-crash-course",
+        "rule": "WARNING479"
+      },
+      {
+        "file": "main.py",
+        "line": 433,
+        "severity": "warning",
+        "message": "Mock warning issue #11 in python-crash-course",
+        "rule": "WARNING617"
+      },
+      {
+        "file": "config.py",
+        "line": 278,
+        "severity": "warning",
+        "message": "Mock warning issue #12 in python-crash-course",
+        "rule": "WARNING212"
+      },
+      {
+        "file": "models.py",
+        "line": 156,
+        "severity": "info",
+        "message": "Mock info issue #1 in python-crash-course",
+        "rule": "INFO639"
+      },
+      {
+        "file": "main.py",
+        "line": 67,
+        "severity": "info",
+        "message": "Mock info issue #2 in python-crash-course",
+        "rule": "INFO958"
+      },
+      {
+        "file": "main.py",
+        "line": 17,
+        "severity": "info",
+        "message": "Mock info issue #3 in python-crash-course",
+        "rule": "INFO370"
+      },
+      {
+        "file": "models.py",
+        "line": 170,
+        "severity": "info",
+        "message": "Mock info issue #4 in python-crash-course",
+        "rule": "INFO841"
+      },
+      {
+        "file": "config.py",
+        "line": 328,
+        "severity": "info",
+        "message": "Mock info issue #5 in python-crash-course",
+        "rule": "INFO588"
+      },
+      {
+        "file": "utils.py",
+        "line": 309,
+        "severity": "info",
+        "message": "Mock info issue #6 in python-crash-course",
+        "rule": "INFO499"
+      },
+      {
+        "file": "utils.py",
+        "line": 229,
+        "severity": "info",
+        "message": "Mock info issue #7 in python-crash-course",
+        "rule": "INFO573"
+      },
+      {
+        "file": "utils.py",
+        "line": 3,
+        "severity": "info",
+        "message": "Mock info issue #8 in python-crash-course",
+        "rule": "INFO794"
+      },
+      {
+        "file": "views.py",
+        "line": 213,
+        "severity": "info",
+        "message": "Mock info issue #9 in python-crash-course",
+        "rule": "INFO743"
+      },
+      {
+        "file": "models.py",
+        "line": 189,
+        "severity": "info",
+        "message": "Mock info issue #10 in python-crash-course",
+        "rule": "INFO783"
+      },
+      {
+        "file": "models.py",
+        "line": 210,
+        "severity": "info",
+        "message": "Mock info issue #11 in python-crash-course",
+        "rule": "INFO406"
+      },
+      {
+        "file": "views.py",
+        "line": 21,
+        "severity": "info",
+        "message": "Mock info issue #12 in python-crash-course",
+        "rule": "INFO799"
+      },
+      {
+        "file": "config.py",
+        "line": 386,
+        "severity": "info",
+        "message": "Mock info issue #13 in python-crash-course",
+        "rule": "INFO512"
+      },
+      {
+        "file": "config.py",
+        "line": 135,
+        "severity": "info",
+        "message": "Mock info issue #14 in python-crash-course",
+        "rule": "INFO737"
+      },
+      {
+        "file": "main.py",
+        "line": 372,
+        "severity": "info",
+        "message": "Mock info issue #15 in python-crash-course",
+        "rule": "INFO524"
+      },
+      {
+        "file": "main.py",
+        "line": 354,
+        "severity": "info",
+        "message": "Mock info issue #16 in python-crash-course",
+        "rule": "INFO268"
+      }
+    ],
+    "architectural_issues": [],
+    "complexity": {
+      "Cyclomatic Complexity": "6.4",
+      "Maintainability Index": "79.1",
+      "Technical Debt Ratio": "11.3%"
+    },
+    "language_distribution": {
+      "Python": 7192,
+      "JavaScript": 1938,
+      "CSS": 323,
+      "HTML": 132
+    },
+    "file_sizes": [
+      [
+        "file0.py",
+        472
+      ],
+      [
+        "file1.py",
+        367
+      ],
+      [
+        "file2.py",
+        366
+      ],
+      [
+        "file3.py",
+        51
+      ],
+      [
+        "file4.py",
+        68
+      ],
+      [
+        "file5.py",
+        403
+      ],
+      [
+        "file6.py",
+        298
+      ],
+      [
+        "file7.py",
+        299
+      ],
+      [
+        "file8.py",
+        230
+      ],
+      [
+        "file9.py",
+        124
+      ],
+      [
+        "file10.py",
+        329
+      ],
+      [
+        "file11.py",
+        245
+      ],
+      [
+        "file12.py",
+        387
+      ],
+      [
+        "file13.py",
+        75
+      ],
+      [
+        "file14.py",
+        210
+      ],
+      [
+        "file15.py",
+        192
+      ],
+      [
+        "file16.py",
+        343
+      ],
+      [
+        "file17.py",
+        120
+      ],
+      [
+        "file18.py",
+        297
+      ],
+      [
+        "file19.py",
+        179
+      ]
+    ],
+    "summary": "\n        Phân tích repository python-crash-course hoàn tất. \n        \n        Tổng quan:\n        - Tổng số issues: 32\n        - Files được phân tích: 34\n        - Chất lượng code: Trung bình\n        \n        Kết quả cho thấy codebase có mức độ chất lượng trung bình \n        với một số vấn đề cần được xem xét.\n        ",
+    "recommendations": [
+      "Xem xét refactor các function có độ phức tạp cao",
+      "Thêm type hints cho các function thiếu",
+      "Cập nhật docstrings cho các public methods",
+      "Tối ưu hóa import statements",
+      "Xem xét sử dụng linting tools trong CI/CD pipeline"
+    ]
+  },
+  "timestamp": "2025-05-30 18:20:09"
+}
