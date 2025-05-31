@@ -36,6 +36,12 @@ from .llm_analysis_support import (
     create_llm_analysis_support_agent
 )
 
+from .pr_analyzer import (
+    PRAnalyzerAgent,
+    PRImpactAnalysis,
+    PRAnalysisResult
+)
+
 __all__ = [
     # Static Analysis
     'StaticAnalysisIntegratorAgent',
@@ -60,7 +66,12 @@ __all__ = [
     # LLM Analysis Support
     'LLMAnalysisSupportAgent',
     'CodeExplanationRequest',
-    'PRSummaryRequest', 
+    'PRSummaryRequest',
     'QARequest',
-    'create_llm_analysis_support_agent'
+    'create_llm_analysis_support_agent',
+    
+    # PR Analysis
+    'PRAnalyzerAgent',
+    'PRImpactAnalysis',
+    'PRAnalysisResult'
 ]

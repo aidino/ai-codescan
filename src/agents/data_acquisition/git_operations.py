@@ -2,20 +2,37 @@
 Git Operations Agent for Data Acquisition Team.
 
 Handles Git repository operations including cloning, branch management,
-and repository information extraction.
+repository information extraction, and Pull Request analysis.
 """
 
 import os
 import shutil
 import tempfile
 from pathlib import Path
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Tuple
 from urllib.parse import urlparse
 from dataclasses import dataclass
 from loguru import logger
+import json
+import re
+from datetime import datetime
 
 import git
 from git import Repo, GitCommandError
+
+# GitHub/GitLab API imports
+try:
+    import requests
+    from github import Github
+    from gitlab import Gitlab
+    GITHUB_AVAILABLE = True
+    GITLAB_AVAILABLE = True
+except ImportError:
+    GITHUB_AVAILABLE = False
+    GITLAB_AVAILABLE = False
+    requests = None
+    Github = None
+    Gitlab = None
 
 # Import debug logging
 try:
@@ -60,8 +77,51 @@ class RepositoryInfo:
     file_count: int
 
 
+@dataclass
+class PullRequestInfo:
+    """Pull Request information with metadata and diff."""
+    
+    # Basic PR info
+    pr_id: str
+    title: str
+    description: str
+    author: str
+    created_at: datetime
+    updated_at: datetime
+    status: str  # open, closed, merged
+    
+    # Branch information
+    source_branch: str
+    target_branch: str
+    base_commit: str
+    head_commit: str
+    
+    # Changes information
+    diff_text: str
+    changed_files: List[str]
+    files_added: List[str]
+    files_modified: List[str]
+    files_deleted: List[str]
+    
+    # Statistics
+    additions: int
+    deletions: int
+    changed_lines: int
+    
+    # Platform-specific metadata
+    platform: str  # github, gitlab, etc.
+    web_url: str
+    api_url: str
+    labels: List[str]
+    assignees: List[str]
+    reviewers: List[str]
+    
+    # Additional metadata
+    metadata: Dict[str, Any]
+
+
 class GitOperationsAgent:
-    """Agent responsible for Git repository operations."""
+    """Agent responsible for Git repository operations and PR analysis."""
     
     def __init__(self, temp_dir: Optional[str] = None):
         """
@@ -80,7 +140,9 @@ class GitOperationsAgent:
         # Log agent initialization
         self._debug_logger.log_step("GitOperationsAgent initialized", {
             "temp_dir": str(self.temp_dir),
-            "base_clone_dir": str(self.base_clone_dir)
+            "base_clone_dir": str(self.base_clone_dir),
+            "github_available": GITHUB_AVAILABLE,
+            "gitlab_available": GITLAB_AVAILABLE
         })
         
     @debug_trace
@@ -485,4 +547,358 @@ class GitOperationsAgent:
             return languages
         except Exception as e:
             self._debug_logger.log_error(e, {"path": path, "operation": "detect_basic_languages"})
-            return [] 
+            return []
+    
+    # Pull Request Analysis Methods
+    
+    @debug_trace
+    def get_pr_details(
+        self, 
+        repo_url: str, 
+        pr_id: str, 
+        pat: Optional[str] = None
+    ) -> PullRequestInfo:
+        """
+        Fetch comprehensive Pull Request details from GitHub/GitLab.
+        
+        Args:
+            repo_url: Repository URL
+            pr_id: Pull Request ID/number
+            pat: Personal Access Token for authentication
+            
+        Returns:
+            PullRequestInfo object with PR details and diff
+            
+        Raises:
+            ValueError: If platform not supported or PR not found
+            Exception: If API call fails
+        """
+        self._debug_logger.log_step("Starting PR details fetch", {
+            "repo_url": repo_url,
+            "pr_id": pr_id,
+            "has_pat": bool(pat)
+        })
+        
+        try:
+            # Determine platform
+            platform = self._detect_platform(repo_url)
+            
+            if platform == "github":
+                return self._fetch_github_pr(repo_url, pr_id, pat)
+            elif platform == "gitlab":
+                return self._fetch_gitlab_pr(repo_url, pr_id, pat)
+            else:
+                # Fallback to Git-based diff extraction
+                return self._fetch_git_pr(repo_url, pr_id, pat)
+                
+        except Exception as e:
+            self._debug_logger.log_error(e, {
+                "repo_url": repo_url,
+                "pr_id": pr_id,
+                "operation": "get_pr_details"
+            })
+            raise
+    
+    @debug_trace
+    def _fetch_github_pr(
+        self, 
+        repo_url: str, 
+        pr_id: str, 
+        pat: Optional[str] = None
+    ) -> PullRequestInfo:
+        """Fetch PR details from GitHub API."""
+        if not GITHUB_AVAILABLE:
+            self._debug_logger.log_error(
+                ImportError("PyGithub not available"), 
+                {"fallback": "git_pr_fetch"}
+            )
+            return self._fetch_git_pr(repo_url, pr_id, pat)
+        
+        try:
+            # Extract owner and repo from URL
+            owner, repo_name = self._parse_github_url(repo_url)
+            
+            # Initialize GitHub API client
+            github = Github(pat) if pat else Github()
+            repo = github.get_repo(f"{owner}/{repo_name}")
+            pr = repo.get_pull(int(pr_id))
+            
+            self._debug_logger.log_step("Fetched GitHub PR", {
+                "owner": owner,
+                "repo": repo_name,
+                "pr_number": pr_id,
+                "pr_title": pr.title
+            })
+            
+            # Get diff content
+            diff_text = self._fetch_pr_diff_github(pr)
+            
+            # Parse changed files
+            changed_files, files_added, files_modified, files_deleted = self._parse_pr_files(pr)
+            
+            # Create PullRequestInfo
+            pr_info = PullRequestInfo(
+                pr_id=str(pr.number),
+                title=pr.title,
+                description=pr.body or "",
+                author=pr.user.login,
+                created_at=pr.created_at,
+                updated_at=pr.updated_at,
+                status="merged" if pr.merged else ("closed" if pr.state == "closed" else "open"),
+                
+                source_branch=pr.head.ref,
+                target_branch=pr.base.ref,
+                base_commit=pr.base.sha,
+                head_commit=pr.head.sha,
+                
+                diff_text=diff_text,
+                changed_files=changed_files,
+                files_added=files_added,
+                files_modified=files_modified,
+                files_deleted=files_deleted,
+                
+                additions=pr.additions,
+                deletions=pr.deletions,
+                changed_lines=pr.additions + pr.deletions,
+                
+                platform="github",
+                web_url=pr.html_url,
+                api_url=pr.url,
+                labels=[label.name for label in pr.labels],
+                assignees=[assignee.login for assignee in pr.assignees],
+                reviewers=[review.user.login for review in pr.get_reviews() if review.user],
+                
+                metadata={
+                    "mergeable": pr.mergeable,
+                    "merged_by": pr.merged_by.login if pr.merged_by else None,
+                    "comments": pr.comments,
+                    "review_comments": pr.review_comments,
+                    "commits": pr.commits
+                }
+            )
+            
+            return pr_info
+            
+        except Exception as e:
+            self._debug_logger.log_error(e, {
+                "repo_url": repo_url,
+                "pr_id": pr_id,
+                "operation": "fetch_github_pr"
+            })
+            # Fallback to git-based approach
+            return self._fetch_git_pr(repo_url, pr_id, pat)
+    
+    @debug_trace
+    def _fetch_gitlab_pr(
+        self, 
+        repo_url: str, 
+        pr_id: str, 
+        pat: Optional[str] = None
+    ) -> PullRequestInfo:
+        """Fetch PR details from GitLab API."""
+        if not GITLAB_AVAILABLE:
+            self._debug_logger.log_error(
+                ImportError("python-gitlab not available"), 
+                {"fallback": "git_pr_fetch"}
+            )
+            return self._fetch_git_pr(repo_url, pr_id, pat)
+        
+        try:
+            # Extract project path from URL
+            project_path = self._parse_gitlab_url(repo_url)
+            
+            # Initialize GitLab API client
+            gitlab = Gitlab("https://gitlab.com", private_token=pat) if pat else Gitlab("https://gitlab.com")
+            project = gitlab.projects.get(project_path)
+            mr = project.mergerequests.get(int(pr_id))
+            
+            self._debug_logger.log_step("Fetched GitLab MR", {
+                "project_path": project_path,
+                "mr_iid": pr_id,
+                "mr_title": mr.title
+            })
+            
+            # Get diff content
+            diff_text = mr.changes().get('changes', '')
+            
+            # Create PullRequestInfo
+            pr_info = PullRequestInfo(
+                pr_id=str(mr.iid),
+                title=mr.title,
+                description=mr.description or "",
+                author=mr.author.get('username', ''),
+                created_at=datetime.fromisoformat(mr.created_at.replace('Z', '+00:00')),
+                updated_at=datetime.fromisoformat(mr.updated_at.replace('Z', '+00:00')),
+                status=mr.state,
+                
+                source_branch=mr.source_branch,
+                target_branch=mr.target_branch,
+                base_commit=mr.diff_refs.get('base_sha', ''),
+                head_commit=mr.diff_refs.get('head_sha', ''),
+                
+                diff_text=str(diff_text),
+                changed_files=mr.changes().get('changes', []),
+                files_added=[],  # GitLab API doesn't easily provide this breakdown
+                files_modified=[],
+                files_deleted=[],
+                
+                additions=0,  # Not easily available in GitLab API
+                deletions=0,
+                changed_lines=0,
+                
+                platform="gitlab",
+                web_url=mr.web_url,
+                api_url=f"https://gitlab.com/api/v4/projects/{project.id}/merge_requests/{mr.iid}",
+                labels=mr.labels,
+                assignees=[assignee.get('username', '') for assignee in (mr.assignees or [])],
+                reviewers=[],  # GitLab handles this differently
+                
+                metadata={
+                    "mergeable": mr.merge_status == 'can_be_merged',
+                    "work_in_progress": mr.work_in_progress,
+                    "milestone": mr.milestone.get('title') if mr.milestone else None
+                }
+            )
+            
+            return pr_info
+            
+        except Exception as e:
+            self._debug_logger.log_error(e, {
+                "repo_url": repo_url,
+                "pr_id": pr_id,
+                "operation": "fetch_gitlab_pr"
+            })
+            # Fallback to git-based approach
+            return self._fetch_git_pr(repo_url, pr_id, pat)
+    
+    @debug_trace
+    def _fetch_git_pr(
+        self, 
+        repo_url: str, 
+        pr_id: str, 
+        pat: Optional[str] = None
+    ) -> PullRequestInfo:
+        """
+        Fallback method to fetch PR using Git commands.
+        
+        This is a simplified approach that creates a basic PR info
+        when API access is not available.
+        """
+        self._debug_logger.log_step("Using Git fallback for PR fetch", {
+            "repo_url": repo_url,
+            "pr_id": pr_id
+        })
+        
+        # Create a basic PR info structure
+        pr_info = PullRequestInfo(
+            pr_id=pr_id,
+            title=f"Pull Request #{pr_id}",
+            description="PR details fetched via Git fallback",
+            author="unknown",
+            created_at=datetime.now(),
+            updated_at=datetime.now(),
+            status="unknown",
+            
+            source_branch="unknown",
+            target_branch="main",
+            base_commit="",
+            head_commit="",
+            
+            diff_text="Diff not available via Git fallback",
+            changed_files=[],
+            files_added=[],
+            files_modified=[],
+            files_deleted=[],
+            
+            additions=0,
+            deletions=0,
+            changed_lines=0,
+            
+            platform="git_fallback",
+            web_url=repo_url,
+            api_url="",
+            labels=[],
+            assignees=[],
+            reviewers=[],
+            
+            metadata={"fallback": True}
+        )
+        
+        return pr_info
+    
+    # Helper methods for PR analysis
+    
+    def _detect_platform(self, repo_url: str) -> str:
+        """Detect Git platform from repository URL."""
+        if 'github.com' in repo_url.lower():
+            return "github"
+        elif 'gitlab.com' in repo_url.lower():
+            return "gitlab"
+        else:
+            return "unknown"
+    
+    def _parse_github_url(self, repo_url: str) -> Tuple[str, str]:
+        """Parse GitHub URL to extract owner and repo name."""
+        parsed = urlparse(repo_url)
+        path_parts = parsed.path.strip('/').split('/')
+        
+        if len(path_parts) >= 2:
+            owner = path_parts[0]
+            repo_name = path_parts[1]
+            if repo_name.endswith('.git'):
+                repo_name = repo_name[:-4]
+            return owner, repo_name
+        else:
+            raise ValueError(f"Invalid GitHub URL format: {repo_url}")
+    
+    def _parse_gitlab_url(self, repo_url: str) -> str:
+        """Parse GitLab URL to extract project path."""
+        parsed = urlparse(repo_url)
+        path = parsed.path.strip('/')
+        if path.endswith('.git'):
+            path = path[:-4]
+        return path
+    
+    def _fetch_pr_diff_github(self, pr) -> str:
+        """Fetch PR diff content from GitHub PR object."""
+        try:
+            # Get diff via GitHub API
+            diff_url = pr.diff_url
+            headers = {'Accept': 'application/vnd.github.v3.diff'}
+            
+            if hasattr(pr._requester, '_Requester__authorizationHeader'):
+                headers.update(pr._requester._Requester__authorizationHeader)
+            
+            response = requests.get(diff_url, headers=headers)
+            response.raise_for_status()
+            
+            return response.text
+        except Exception as e:
+            self._debug_logger.log_error(e, {"operation": "fetch_pr_diff_github"})
+            return f"Error fetching diff: {str(e)}"
+    
+    def _parse_pr_files(self, pr) -> Tuple[List[str], List[str], List[str], List[str]]:
+        """Parse PR files to categorize changes."""
+        try:
+            files = pr.get_files()
+            
+            changed_files = []
+            files_added = []
+            files_modified = []
+            files_deleted = []
+            
+            for file in files:
+                changed_files.append(file.filename)
+                
+                if file.status == 'added':
+                    files_added.append(file.filename)
+                elif file.status == 'modified':
+                    files_modified.append(file.filename)
+                elif file.status == 'removed':
+                    files_deleted.append(file.filename)
+            
+            return changed_files, files_added, files_modified, files_deleted
+            
+        except Exception as e:
+            self._debug_logger.log_error(e, {"operation": "parse_pr_files"})
+            return [], [], [], [] 

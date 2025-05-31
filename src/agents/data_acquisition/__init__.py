@@ -1,38 +1,45 @@
+#!/usr/bin/env python3
 """
-Data Acquisition Team Agents.
+AI CodeScan - Data Acquisition Module
 
-This package contains agents responsible for acquiring and preparing
-project data for analysis.
+Module chịu trách nhiệm thu thập dữ liệu từ repository.
 """
 
-from .git_operations import GitOperationsAgent, RepositoryInfo
-from .language_identifier import (
-    LanguageIdentifierAgent, 
-    LanguageInfo, 
-    ProjectLanguageProfile
+from .git_operations import (
+    GitOperationsAgent,
+    RepositoryInfo,
+    PullRequestInfo
 )
+
+from .language_identifier import (
+    LanguageIdentifierAgent,
+    LanguageInfo,
+    FrameworkInfo,
+    DependencyInfo
+)
+
 from .data_preparation import (
     DataPreparationAgent,
     ProjectDataContext,
-    FileInfo,
-    DirectoryStructure,
-    ProjectMetadata
+    FileAnalysisResult,
+    StructureNode
 )
 
 __all__ = [
     # Git Operations
     'GitOperationsAgent',
     'RepositoryInfo',
+    'PullRequestInfo',
     
-    # Language Identification
+    # Language Identification  
     'LanguageIdentifierAgent',
     'LanguageInfo',
-    'ProjectLanguageProfile',
+    'FrameworkInfo',
+    'DependencyInfo',
     
     # Data Preparation
     'DataPreparationAgent',
     'ProjectDataContext',
-    'FileInfo',
-    'DirectoryStructure',
-    'ProjectMetadata'
+    'FileAnalysisResult',
+    'StructureNode'
 ]
