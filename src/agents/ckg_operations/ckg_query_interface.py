@@ -779,15 +779,338 @@ class CKGQueryInterfaceAgent:
         Tìm circular imports trong Dart code.
         
         Returns:
-            CKGQueryResult: Danh sách circular imports
+            CKGQueryResult: Danh sách circular import paths
         """
         query = """
-        MATCH path = (f1:File)-[:IMPORTS*2..10]->(f1)
-        WHERE ALL(rel in relationships(path) WHERE type(rel) = 'IMPORTS')
-        RETURN [node in nodes(path) | node.file_path] as circular_path,
-               length(path) as path_length
-        ORDER BY path_length
-        LIMIT 20
+        MATCH path = (f1:File)-[:CONTAINS]->(:DartLibrary)-[:DEFINES_DART_IMPORT]->(:DartImport)-[:DART_IMPORTS]->(f2:File)
+        WHERE f1 <> f2 AND exists((f2)-[:CONTAINS]->(:DartLibrary)-[:DEFINES_DART_IMPORT]->(:DartImport)-[:DART_IMPORTS]->(f1))
+        RETURN f1.file_path as file1, f2.file_path as file2, length(path) as path_length
+        ORDER BY path_length DESC
+        """
+        
+        return self.execute_query(query)
+
+    # === Kotlin Query Methods ===
+    
+    def get_kotlin_classes_in_file(self, file_path: str) -> CKGQueryResult:
+        """
+        Lấy tất cả Kotlin classes trong một file.
+        
+        Args:
+            file_path: Đường dẫn file
+            
+        Returns:
+            CKGQueryResult: Danh sách Kotlin classes
+        """
+        query = """
+        MATCH (f:File {file_path: $file_path})
+        MATCH (f)-[:DEFINES_KOTLIN_CLASS]->(c:KotlinClass)
+        RETURN c.name as name, c.line_number as line_number,
+               c.modifiers as modifiers, c.is_abstract as is_abstract,
+               c.is_final as is_final, c.extends_class as extends_class,
+               c.implements_interfaces as implements_interfaces,
+               c.methods_count as methods_count, c.fields_count as fields_count
+        ORDER BY c.line_number
+        """
+        
+        return self.execute_query(query, {"file_path": file_path})
+
+    def get_kotlin_interfaces_in_file(self, file_path: str) -> CKGQueryResult:
+        """
+        Lấy tất cả Kotlin interfaces trong một file.
+        
+        Args:
+            file_path: Đường dẫn file
+            
+        Returns:
+            CKGQueryResult: Danh sách Kotlin interfaces
+        """
+        query = """
+        MATCH (f:File {file_path: $file_path})
+        MATCH (f)-[:DEFINES_KOTLIN_INTERFACE]->(i:KotlinInterface)
+        RETURN i.name as name, i.line_number as line_number,
+               i.modifiers as modifiers, i.extends_interfaces as extends_interfaces,
+               i.methods_count as methods_count, i.fields_count as fields_count
+        ORDER BY i.line_number
+        """
+        
+        return self.execute_query(query, {"file_path": file_path})
+
+    def get_kotlin_data_classes_in_file(self, file_path: str) -> CKGQueryResult:
+        """
+        Lấy tất cả Kotlin data classes trong một file.
+        
+        Args:
+            file_path: Đường dẫn file
+            
+        Returns:
+            CKGQueryResult: Danh sách Kotlin data classes
+        """
+        query = """
+        MATCH (f:File {file_path: $file_path})
+        MATCH (f)-[:DEFINES_KOTLIN_DATA_CLASS]->(dc:KotlinDataClass)
+        RETURN dc.name as name, dc.line_number as line_number,
+               dc.modifiers as modifiers, dc.extends_class as extends_class,
+               dc.implements_interfaces as implements_interfaces,
+               dc.fields_count as fields_count
+        ORDER BY dc.line_number
+        """
+        
+        return self.execute_query(query, {"file_path": file_path})
+
+    def get_kotlin_objects_in_file(self, file_path: str) -> CKGQueryResult:
+        """
+        Lấy tất cả Kotlin objects trong một file.
+        
+        Args:
+            file_path: Đường dẫn file
+            
+        Returns:
+            CKGQueryResult: Danh sách Kotlin objects
+        """
+        query = """
+        MATCH (f:File {file_path: $file_path})
+        MATCH (f)-[:DEFINES_KOTLIN_OBJECT]->(o:KotlinObject)
+        RETURN o.name as name, o.line_number as line_number,
+               o.modifiers as modifiers, o.extends_class as extends_class,
+               o.implements_interfaces as implements_interfaces,
+               o.methods_count as methods_count, o.fields_count as fields_count
+        ORDER BY o.line_number
+        """
+        
+        return self.execute_query(query, {"file_path": file_path})
+
+    def get_kotlin_functions_in_file(self, file_path: str) -> CKGQueryResult:
+        """
+        Lấy tất cả Kotlin functions trong một file.
+        
+        Args:
+            file_path: Đường dẫn file
+            
+        Returns:
+            CKGQueryResult: Danh sách Kotlin functions
+        """
+        query = """
+        MATCH (f:File {file_path: $file_path})
+        MATCH (f)-[:DEFINES_KOTLIN_FUNCTION]->(func:KotlinFunction)
+        RETURN func.name as name, func.line_number as line_number,
+               func.return_type as return_type, func.parameters_count as parameters_count,
+               func.complexity as complexity, func.is_async as is_async
+        ORDER BY func.line_number
+        """
+        
+        return self.execute_query(query, {"file_path": file_path})
+
+    def get_kotlin_extension_functions_in_file(self, file_path: str) -> CKGQueryResult:
+        """
+        Lấy tất cả Kotlin extension functions trong một file.
+        
+        Args:
+            file_path: Đường dẫn file
+            
+        Returns:
+            CKGQueryResult: Danh sách Kotlin extension functions
+        """
+        query = """
+        MATCH (f:File {file_path: $file_path})
+        MATCH (f)-[:DEFINES_KOTLIN_EXTENSION_FUNCTION]->(ef:KotlinExtensionFunction)
+        RETURN ef.name as name, ef.line_number as line_number,
+               ef.return_type as return_type, ef.parameters_count as parameters_count,
+               ef.complexity as complexity
+        ORDER BY ef.line_number
+        """
+        
+        return self.execute_query(query, {"file_path": file_path})
+
+    def get_kotlin_enums_in_file(self, file_path: str) -> CKGQueryResult:
+        """
+        Lấy tất cả Kotlin enums trong một file.
+        
+        Args:
+            file_path: Đường dẫn file
+            
+        Returns:
+            CKGQueryResult: Danh sách Kotlin enums
+        """
+        query = """
+        MATCH (f:File {file_path: $file_path})
+        MATCH (f)-[:DEFINES_KOTLIN_ENUM]->(e:KotlinEnum)
+        RETURN e.name as name, e.line_number as line_number,
+               e.modifiers as modifiers, e.implements_interfaces as implements_interfaces,
+               e.constants_count as constants_count, e.methods_count as methods_count
+        ORDER BY e.line_number
+        """
+        
+        return self.execute_query(query, {"file_path": file_path})
+
+    def get_kotlin_imports_in_file(self, file_path: str) -> CKGQueryResult:
+        """
+        Lấy tất cả Kotlin imports trong một file.
+        
+        Args:
+            file_path: Đường dẫn file
+            
+        Returns:
+            CKGQueryResult: Danh sách Kotlin imports
+        """
+        query = """
+        MATCH (f:File {file_path: $file_path})
+        MATCH (f)-[:CONTAINS]->(p:KotlinPackage)-[:DEFINES_KOTLIN_IMPORT]->(i:KotlinImport)
+        RETURN i.name as import_name, i.line_number as line_number,
+               i.module_name as module_name, i.imported_name as imported_name,
+               i.alias as alias, i.is_from_import as is_from_import
+        ORDER BY i.line_number
+        """
+        
+        return self.execute_query(query, {"file_path": file_path})
+
+    def get_kotlin_package_info(self, file_path: str) -> CKGQueryResult:
+        """
+        Lấy thông tin Kotlin package trong một file.
+        
+        Args:
+            file_path: Đường dẫn file
+            
+        Returns:
+            CKGQueryResult: Thông tin Kotlin package
+        """
+        query = """
+        MATCH (f:File {file_path: $file_path})
+        MATCH (f)-[:CONTAINS]->(p:KotlinPackage)
+        RETURN p.name as package_name, p.line_number as line_number,
+               p.full_name as full_name, p.classes_count as classes_count,
+               p.interfaces_count as interfaces_count
+        """
+        
+        return self.execute_query(query, {"file_path": file_path})
+
+    def find_kotlin_class_hierarchy(self, class_name: str) -> CKGQueryResult:
+        """
+        Tìm hierarchy của một Kotlin class.
+        
+        Args:
+            class_name: Tên class cần tìm hierarchy
+            
+        Returns:
+            CKGQueryResult: Class hierarchy với extends và implements relationships
+        """
+        query = """
+        MATCH (c:KotlinClass {name: $class_name})
+        OPTIONAL MATCH (c)-[:KOTLIN_EXTENDS]->(parent:KotlinClass)
+        OPTIONAL MATCH (c)-[:KOTLIN_IMPLEMENTS]->(interface:KotlinInterface)
+        OPTIONAL MATCH (child:KotlinClass)-[:KOTLIN_EXTENDS]->(c)
+        RETURN c.name as class_name, c.file_path as file_path,
+               parent.name as parent_class, interface.name as implemented_interface,
+               collect(DISTINCT child.name) as child_classes
+        """
+        
+        return self.execute_query(query, {"class_name": class_name})
+
+    def get_kotlin_project_statistics(self) -> CKGQueryResult:
+        """
+        Lấy thống kê tổng quan về Kotlin code trong project.
+        
+        Returns:
+            CKGQueryResult: Thống kê Kotlin project
+        """
+        query = """
+        MATCH (f:File)
+        OPTIONAL MATCH (f)-[:DEFINES_KOTLIN_CLASS]->(c:KotlinClass)
+        OPTIONAL MATCH (f)-[:DEFINES_KOTLIN_INTERFACE]->(i:KotlinInterface)
+        OPTIONAL MATCH (f)-[:DEFINES_KOTLIN_DATA_CLASS]->(dc:KotlinDataClass)
+        OPTIONAL MATCH (f)-[:DEFINES_KOTLIN_OBJECT]->(o:KotlinObject)
+        OPTIONAL MATCH (f)-[:DEFINES_KOTLIN_FUNCTION]->(func:KotlinFunction)
+        OPTIONAL MATCH (f)-[:DEFINES_KOTLIN_EXTENSION_FUNCTION]->(ef:KotlinExtensionFunction)
+        OPTIONAL MATCH (f)-[:DEFINES_KOTLIN_ENUM]->(e:KotlinEnum)
+        RETURN 
+            count(DISTINCT f) as total_kotlin_files,
+            count(DISTINCT c) as total_classes,
+            count(DISTINCT i) as total_interfaces,
+            count(DISTINCT dc) as total_data_classes,
+            count(DISTINCT o) as total_objects,
+            count(DISTINCT func) as total_functions,
+            count(DISTINCT ef) as total_extension_functions,
+            count(DISTINCT e) as total_enums
+        """
+        
+        return self.execute_query(query)
+
+    def search_kotlin_elements_by_name(self, name_pattern: str, element_types: Optional[List[str]] = None) -> CKGQueryResult:
+        """
+        Tìm kiếm Kotlin elements theo tên.
+        
+        Args:
+            name_pattern: Pattern để tìm kiếm (regex)
+            element_types: Danh sách loại elements cần tìm (classes, interfaces, functions, etc.)
+            
+        Returns:
+            CKGQueryResult: Danh sách elements matching pattern
+        """
+        # Default search all Kotlin element types
+        if element_types is None:
+            element_types = ['KotlinClass', 'KotlinInterface', 'KotlinDataClass', 'KotlinObject', 
+                           'KotlinFunction', 'KotlinExtensionFunction', 'KotlinEnum']
+        
+        # Build WHERE clause cho element types
+        type_clauses = []
+        for element_type in element_types:
+            type_clauses.append(f"n:{element_type}")
+        
+        where_clause = " OR ".join(type_clauses)
+        
+        query = f"""
+        MATCH (n)
+        WHERE ({where_clause}) AND n.name =~ $name_pattern
+        RETURN n.name as name, labels(n) as types, n.file_path as file_path,
+               n.line_number as line_number
+        ORDER BY n.name
+        """
+        
+        return self.execute_query(query, {"name_pattern": name_pattern})
+
+    def find_kotlin_unused_objects(self, file_path: Optional[str] = None) -> CKGQueryResult:
+        """
+        Tìm Kotlin objects không được sử dụng.
+        
+        Args:
+            file_path: File path để scope search (optional)
+            
+        Returns:
+            CKGQueryResult: Danh sách unused Kotlin objects
+        """
+        if file_path:
+            query = """
+            MATCH (f:File {file_path: $file_path})-[:DEFINES_KOTLIN_OBJECT]->(o:KotlinObject)
+            WHERE NOT exists((o)<-[:KOTLIN_USES_TYPE]-())
+            RETURN o.name as object_name, o.file_path as file_path,
+                   o.line_number as line_number, o.modifiers as modifiers
+            ORDER BY o.name
+            """
+            parameters = {"file_path": file_path}
+        else:
+            query = """
+            MATCH (o:KotlinObject)
+            WHERE NOT exists((o)<-[:KOTLIN_USES_TYPE]-())
+            RETURN o.name as object_name, o.file_path as file_path,
+                   o.line_number as line_number, o.modifiers as modifiers
+            ORDER BY o.name
+            """
+            parameters = {}
+        
+        return self.execute_query(query, parameters)
+
+    def find_kotlin_circular_dependencies(self) -> CKGQueryResult:
+        """
+        Tìm circular dependencies trong Kotlin code.
+        
+        Returns:
+            CKGQueryResult: Danh sách circular dependency paths
+        """
+        query = """
+        MATCH path = (f1:File)-[:CONTAINS]->(:KotlinPackage)-[:DEFINES_KOTLIN_IMPORT]->(:KotlinImport)-[:KOTLIN_DEPENDS_ON]->(f2:File)
+        WHERE f1 <> f2 AND exists((f2)-[:CONTAINS]->(:KotlinPackage)-[:DEFINES_KOTLIN_IMPORT]->(:KotlinImport)-[:KOTLIN_DEPENDS_ON]->(f1))
+        RETURN f1.file_path as file1, f2.file_path as file2, length(path) as path_length
+        ORDER BY path_length DESC
         """
         
         return self.execute_query(query) 

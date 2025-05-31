@@ -19,6 +19,15 @@ from .contextual_query import (
     ContextualAnalysisResult
 )
 
+from .architectural_analyzer import (
+    ArchitecturalAnalyzerAgent,
+    ArchitecturalIssue,
+    ArchitecturalAnalysisResult,
+    CircularDependency,
+    UnusedElement,
+    IssueType
+)
+
 __all__ = [
     # Static Analysis
     'StaticAnalysisIntegratorAgent',
@@ -30,5 +39,13 @@ __all__ = [
     # Contextual Query
     'ContextualQueryAgent',
     'ContextualFinding',
-    'ContextualAnalysisResult'
+    'ContextualAnalysisResult',
+    
+    # Architectural Analysis
+    'ArchitecturalAnalyzerAgent',
+    'ArchitecturalIssue',
+    'ArchitecturalAnalysisResult',
+    'CircularDependency',
+    'UnusedElement',
+    'IssueType'
 ]

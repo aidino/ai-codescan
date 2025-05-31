@@ -87,7 +87,7 @@ class StaticAnalysisIntegratorAgent:
             tools_config: Cấu hình cho các tools
         """
         self.tools_config = tools_config or self._get_default_config()
-        self.supported_tools = ["flake8", "pylint", "mypy", "checkstyle", "pmd", "dart_analyze"]
+        self.supported_tools = ["flake8", "pylint", "mypy", "checkstyle", "pmd", "dart_analyze", "detekt"]
         
     def _get_default_config(self) -> Dict[str, Any]:
         """Lấy cấu hình mặc định cho tools."""
@@ -129,6 +129,18 @@ class StaticAnalysisIntegratorAgent:
                 "exclude_patterns": ["**/.dart_tool/**", "**/build/**", "**/.git/**"],
                 "exclude_files": [],
                 "include_transitive_dependencies": False
+            },
+            "detekt": {
+                "enabled": True,
+                "config_file": None,  # Use default config if None
+                "jar_path": None,  # Auto-download if None
+                "version": "1.23.4",
+                "build_upon_default_config": True,
+                "exclude_patterns": ["**/build/**", "**/.git/**", "**/src/test/**"],
+                "baseline": None,
+                "create_baseline": False,
+                "fail_fast": False,
+                "auto_correct": False
             }
         }
     
@@ -188,6 +200,8 @@ class StaticAnalysisIntegratorAgent:
             return self.run_pmd(project_path)
         elif tool == "dart_analyze":
             return self.run_dart_analyze(project_path)
+        elif tool == "detekt":
+            return self.run_detekt(project_path)
         else:
             return AnalysisResult(
                 tool=tool,
@@ -1918,4 +1932,451 @@ class StaticAnalysisIntegratorAgent:
                 if file.endswith('.dart'):
                     dart_files += 1
         
-        return dart_files 
+        return dart_files
+
+    # === Kotlin Support với Detekt ===
+    
+    def run_detekt(self, project_path: str) -> AnalysisResult:
+        """
+        Chạy Detekt trên Kotlin project.
+        
+        Args:
+            project_path: Đường dẫn đến project
+            
+        Returns:
+            AnalysisResult: Kết quả từ Detekt
+        """
+        import time
+        start_time = time.time()
+        
+        config = self.tools_config.get("detekt", {})
+        
+        # Check if this is a Kotlin project
+        kotlin_files = self._count_kotlin_files(project_path)
+        if kotlin_files == 0:
+            return AnalysisResult(
+                tool="detekt",
+                project_path=project_path,
+                total_files_analyzed=0,
+                total_findings=0,
+                findings=[],
+                execution_time_seconds=time.time() - start_time,
+                success=False,
+                error_message="Không tìm thấy file .kt trong project"
+            )
+        
+        # Get or download Detekt JAR
+        jar_path = self._get_detekt_jar(config)
+        if not jar_path:
+            return AnalysisResult(
+                tool="detekt",
+                project_path=project_path,
+                total_files_analyzed=kotlin_files,
+                total_findings=0,
+                findings=[],
+                execution_time_seconds=time.time() - start_time,
+                success=False,
+                error_message="Không thể download hoặc tìm thấy Detekt JAR"
+            )
+        
+        # Build command
+        cmd = [
+            "java", "-jar", jar_path,
+            "--input", project_path,
+            "--report", "xml:detekt-report.xml"
+        ]
+        
+        # Add config file if specified
+        if config.get("config_file"):
+            cmd.extend(["--config", config["config_file"]])
+        elif config.get("build_upon_default_config", True):
+            cmd.append("--build-upon-default-config")
+        
+        # Add baseline if specified
+        if config.get("baseline"):
+            cmd.extend(["--baseline", config["baseline"]])
+        elif config.get("create_baseline"):
+            cmd.extend(["--create-baseline", "detekt-baseline.xml"])
+        
+        # Add other options
+        if config.get("fail_fast"):
+            cmd.append("--fail-fast")
+        
+        if config.get("auto_correct"):
+            cmd.append("--auto-correct")
+        
+        # Add excludes
+        exclude_patterns = config.get("exclude_patterns", [])
+        for pattern in exclude_patterns:
+            cmd.extend(["--excludes", pattern])
+        
+        logger.info(f"Chạy Detekt command: {' '.join(cmd)}")
+        
+        try:
+            # Run Detekt
+            result = subprocess.run(
+                cmd,
+                cwd=project_path,
+                capture_output=True,
+                text=True,
+                timeout=300  # 5 minutes timeout
+            )
+            
+            execution_time = time.time() - start_time
+            
+            # Read XML report if it exists
+            xml_report_path = os.path.join(project_path, "detekt-report.xml")
+            raw_output = result.stdout
+            
+            if os.path.exists(xml_report_path):
+                with open(xml_report_path, 'r', encoding='utf-8') as f:
+                    xml_content = f.read()
+                    findings = self.parse_detekt_output(xml_content, project_path)
+                    # Clean up report file
+                    os.remove(xml_report_path)
+            else:
+                # Fallback to parsing stderr/stdout
+                findings = self.parse_detekt_text_output(result.stderr + result.stdout, project_path)
+            
+            success = True
+            error_message = None
+            
+            # Log command
+            command_executed = ' '.join(cmd)
+            
+            return AnalysisResult(
+                tool="detekt",
+                project_path=project_path,
+                total_files_analyzed=kotlin_files,
+                total_findings=len(findings),
+                findings=findings,
+                execution_time_seconds=execution_time,
+                success=success,
+                error_message=error_message,
+                command_executed=command_executed,
+                raw_output=raw_output
+            )
+            
+        except subprocess.TimeoutExpired:
+            return AnalysisResult(
+                tool="detekt",
+                project_path=project_path,
+                total_files_analyzed=kotlin_files,
+                total_findings=0,
+                findings=[],
+                execution_time_seconds=time.time() - start_time,
+                success=False,
+                error_message="Detekt timeout (>5 minutes)"
+            )
+        except Exception as e:
+            logger.error(f"Lỗi chạy Detekt: {str(e)}")
+            return AnalysisResult(
+                tool="detekt",
+                project_path=project_path,
+                total_files_analyzed=kotlin_files,
+                total_findings=0,
+                findings=[],
+                execution_time_seconds=time.time() - start_time,
+                success=False,
+                error_message=f"Lỗi chạy Detekt: {str(e)}"
+            )
+    
+    def parse_detekt_output(self, xml_content: str, project_path: str) -> List[Finding]:
+        """
+        Parse XML output từ Detekt.
+        
+        Args:
+            xml_content: Nội dung XML từ Detekt
+            project_path: Đường dẫn project
+            
+        Returns:
+            List[Finding]: Danh sách findings
+        """
+        findings = []
+        
+        try:
+            import xml.etree.ElementTree as ET
+            root = ET.fromstring(xml_content)
+            
+            # Detekt XML format:
+            # <checkstyle>
+            #   <file name="path/to/file.kt">
+            #     <error line="10" column="5" severity="error" message="..." source="detekt.style.MagicNumber"/>
+            #   </file>
+            # </checkstyle>
+            
+            for file_elem in root.findall('.//file'):
+                file_path = file_elem.get('name', '')
+                
+                # Make absolute path
+                if not os.path.isabs(file_path):
+                    file_path = os.path.join(project_path, file_path)
+                
+                for error_elem in file_elem.findall('error'):
+                    line_number = int(error_elem.get('line', '1'))
+                    column_number = int(error_elem.get('column', '1'))
+                    severity_str = error_elem.get('severity', '')
+                    message = error_elem.get('message', '')
+                    source = error_elem.get('source', '')
+                    
+                    # Extract rule name từ source (e.g., "detekt.style.MagicNumber" -> "MagicNumber")
+                    rule_id = source.split('.')[-1] if source else 'unknown'
+                    
+                    # Classify finding
+                    severity, finding_type = self._classify_detekt_finding(severity_str, rule_id, source)
+                    
+                    finding = Finding(
+                        file_path=file_path,
+                        line_number=line_number,
+                        column_number=column_number,
+                        severity=severity,
+                        finding_type=finding_type,
+                        rule_id=rule_id,
+                        message=message,
+                        tool="detekt",
+                        suggestion=self._get_detekt_suggestion(rule_id)
+                    )
+                    
+                    findings.append(finding)
+            
+        except Exception as e:
+            logger.error(f"Lỗi parse Detekt XML: {str(e)}")
+            # Fallback to text parsing
+            return self.parse_detekt_text_output(xml_content, project_path)
+        
+        logger.info(f"Parsed {len(findings)} findings từ Detekt XML output")
+        return findings
+    
+    def parse_detekt_text_output(self, output_str: str, project_path: str) -> List[Finding]:
+        """
+        Parse text output từ Detekt khi XML không available.
+        
+        Args:
+            output_str: Text output từ Detekt
+            project_path: Đường dẫn project
+            
+        Returns:
+            List[Finding]: Danh sách findings
+        """
+        findings = []
+        
+        if not output_str or not output_str.strip():
+            return findings
+        
+        lines = output_str.strip().split('\n')
+        
+        for line in lines:
+            line = line.strip()
+            if not line:
+                continue
+            
+            # Detekt text format patterns:
+            # 1. file.kt:line:column: ruleName: message
+            # 2. file.kt:line: ruleName - message
+            
+            # Pattern 1: file.kt:line:column: ruleName: message
+            pattern1 = r'^(.+?):(\d+):(\d+):\s*([^:]+):\s*(.+)$'
+            match1 = re.match(pattern1, line)
+            
+            if match1:
+                file_path = match1.group(1).strip()
+                line_number = int(match1.group(2))
+                column_number = int(match1.group(3))
+                rule_id = match1.group(4).strip()
+                message = match1.group(5).strip()
+                
+                # Make absolute path
+                if not os.path.isabs(file_path):
+                    file_path = os.path.join(project_path, file_path)
+                
+                severity, finding_type = self._classify_detekt_finding("warning", rule_id, "")
+                
+                finding = Finding(
+                    file_path=file_path,
+                    line_number=line_number,
+                    column_number=column_number,
+                    severity=severity,
+                    finding_type=finding_type,
+                    rule_id=rule_id,
+                    message=message,
+                    tool="detekt",
+                    suggestion=self._get_detekt_suggestion(rule_id)
+                )
+                
+                findings.append(finding)
+                continue
+            
+            # Pattern 2: file.kt:line: ruleName - message
+            pattern2 = r'^(.+?):(\d+):\s*([^-]+)\s*-\s*(.+)$'
+            match2 = re.match(pattern2, line)
+            
+            if match2:
+                file_path = match2.group(1).strip()
+                line_number = int(match2.group(2))
+                rule_id = match2.group(3).strip()
+                message = match2.group(4).strip()
+                
+                # Make absolute path
+                if not os.path.isabs(file_path):
+                    file_path = os.path.join(project_path, file_path)
+                
+                severity, finding_type = self._classify_detekt_finding("warning", rule_id, "")
+                
+                finding = Finding(
+                    file_path=file_path,
+                    line_number=line_number,
+                    column_number=1,  # Default column
+                    severity=severity,
+                    finding_type=finding_type,
+                    rule_id=rule_id,
+                    message=message,
+                    tool="detekt",
+                    suggestion=self._get_detekt_suggestion(rule_id)
+                )
+                
+                findings.append(finding)
+        
+        logger.info(f"Parsed {len(findings)} findings từ Detekt text output")
+        return findings
+    
+    def _classify_detekt_finding(self, severity_str: str, rule_id: str, source: str) -> Tuple[SeverityLevel, FindingType]:
+        """
+        Phân loại Detekt finding theo severity, rule ID và source.
+        
+        Args:
+            severity_str: Severity từ Detekt ("error", "warning", etc.)
+            rule_id: Rule ID (e.g., "MagicNumber")
+            source: Full source path (e.g., "detekt.style.MagicNumber")
+            
+        Returns:
+            Tuple[SeverityLevel, FindingType]: Severity và type
+        """
+        # Map severity
+        severity_map = {
+            'error': SeverityLevel.HIGH,
+            'warning': SeverityLevel.MEDIUM,
+            'info': SeverityLevel.LOW
+        }
+        severity = severity_map.get(severity_str.lower(), SeverityLevel.MEDIUM)
+        
+        # Detekt rule categories based on source package
+        if 'security' in source.lower():
+            finding_type = FindingType.SECURITY
+        elif 'performance' in source.lower():
+            finding_type = FindingType.PERFORMANCE
+        elif 'complexity' in source.lower():
+            finding_type = FindingType.REFACTOR
+        elif 'style' in source.lower():
+            finding_type = FindingType.STYLE
+        elif 'naming' in source.lower():
+            finding_type = FindingType.CONVENTION
+        elif 'exceptions' in source.lower():
+            finding_type = FindingType.ERROR
+        elif 'coroutines' in source.lower():
+            finding_type = FindingType.WARNING
+        else:
+            # Classify by rule name patterns
+            rule_lower = rule_id.lower()
+            
+            if any(word in rule_lower for word in ['magic', 'number', 'string', 'hardcoded']):
+                finding_type = FindingType.REFACTOR
+            elif any(word in rule_lower for word in ['unused', 'dead', 'unnecessary']):
+                finding_type = FindingType.WARNING
+            elif any(word in rule_lower for word in ['naming', 'case', 'length']):
+                finding_type = FindingType.CONVENTION
+            elif any(word in rule_lower for word in ['complexity', 'cognitive', 'cyclomatic']):
+                finding_type = FindingType.REFACTOR
+            elif any(word in rule_lower for word in ['performance', 'slow', 'inefficient']):
+                finding_type = FindingType.PERFORMANCE
+            elif any(word in rule_lower for word in ['security', 'unsafe', 'vulnerable']):
+                finding_type = FindingType.SECURITY
+            else:
+                finding_type = FindingType.STYLE
+        
+        return severity, finding_type
+    
+    def _get_detekt_suggestion(self, rule_id: str) -> Optional[str]:
+        """
+        Lấy suggestion cho Detekt rule.
+        
+        Args:
+            rule_id: Detekt rule ID
+            
+        Returns:
+            Optional[str]: Suggestion text
+        """
+        suggestions = {
+            'MagicNumber': 'Định nghĩa magic numbers thành named constants để improve readability',
+            'LongMethod': 'Chia method dài thành nhiều methods nhỏ hơn',
+            'LongParameterList': 'Sử dụng data class hoặc builder pattern để reduce parameter count',
+            'ComplexMethod': 'Simplify method logic hoặc extract thành helper methods',
+            'TooManyFunctions': 'Consider splitting class thành multiple smaller classes',
+            'LargeClass': 'Refactor large class thành smaller, focused classes',
+            'UnusedPrivateMember': 'Remove unused private members để clean up code',
+            'DeadCode': 'Remove unreachable code để improve maintainability',
+            'EmptyCodeBlock': 'Remove empty code blocks hoặc add meaningful implementation',
+            'UnnecessaryParentheses': 'Remove unnecessary parentheses để improve readability',
+            'FunctionName': 'Sử dụng camelCase naming convention cho function names',
+            'ClassNaming': 'Sử dụng PascalCase naming convention cho class names',
+            'VariableNaming': 'Sử dụng camelCase naming convention cho variable names',
+            'PackageNaming': 'Sử dụng lowercase naming convention cho package names',
+            'WildcardImport': 'Sử dụng specific imports thay vì wildcard imports',
+            'UnusedImports': 'Remove unused imports để clean up code',
+            'NoWildcardImports': 'Avoid wildcard imports để improve code clarity',
+            'MaxLineLength': 'Break long lines để improve readability (max 120 characters)',
+            'TrailingWhitespace': 'Remove trailing whitespace từ lines',
+            'FinalNewline': 'Add final newline at end of file',
+            'SpacingBetweenPackageAndImports': 'Add proper spacing between package và import declarations'
+        }
+        
+        return suggestions.get(rule_id)
+    
+    def _count_kotlin_files(self, project_path: str) -> int:
+        """
+        Đếm số file .kt trong project.
+        
+        Args:
+            project_path: Đường dẫn project
+            
+        Returns:
+            int: Số file .kt
+        """
+        kotlin_files = 0
+        
+        for root, dirs, files in os.walk(project_path):
+            # Skip common non-source directories
+            dirs[:] = [d for d in dirs if d not in ['build', '.git', '.idea', '.gradle']]
+            
+            for file in files:
+                if file.endswith('.kt'):
+                    kotlin_files += 1
+        
+        return kotlin_files
+    
+    def _get_detekt_jar(self, config: Dict[str, Any]) -> Optional[str]:
+        """
+        Lấy đường dẫn đến Detekt JAR, download nếu cần.
+        
+        Args:
+            config: Detekt configuration
+            
+        Returns:
+            Optional[str]: Đường dẫn đến JAR file
+        """
+        jar_path = config.get("jar_path")
+        if jar_path and os.path.exists(jar_path):
+            return jar_path
+        
+        # Auto-download
+        version = config.get("version", "1.23.4")
+        tools_dir = os.path.expanduser("~/.ai_codescan/jars")
+        jar_filename = f"detekt-cli-{version}-all.jar"
+        jar_path = os.path.join(tools_dir, jar_filename)
+        
+        if os.path.exists(jar_path):
+            return jar_path
+        
+        # Download từ GitHub releases
+        download_url = f"https://github.com/detekt/detekt/releases/download/v{version}/detekt-cli-{version}-all.jar"
+        
+        return self._download_jar("detekt", version, download_url) 

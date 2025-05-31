@@ -57,6 +57,27 @@ class NodeType(Enum):
     DART_ENUM = "DartEnum"
     DART_ENUM_VALUE = "DartEnumValue"
     DART_TYPEDEF = "DartTypedef"
+    
+    # Kotlin nodes
+    KOTLIN_CLASS = "KotlinClass"
+    KOTLIN_INTERFACE = "KotlinInterface"
+    KOTLIN_DATA_CLASS = "KotlinDataClass"
+    KOTLIN_SEALED_CLASS = "KotlinSealedClass"
+    KOTLIN_OBJECT = "KotlinObject"
+    KOTLIN_COMPANION_OBJECT = "KotlinCompanionObject"
+    KOTLIN_FUNCTION = "KotlinFunction"
+    KOTLIN_METHOD = "KotlinMethod"
+    KOTLIN_EXTENSION_FUNCTION = "KotlinExtensionFunction"
+    KOTLIN_CONSTRUCTOR = "KotlinConstructor"
+    KOTLIN_PROPERTY = "KotlinProperty"
+    KOTLIN_FIELD = "KotlinField"
+    KOTLIN_PARAMETER = "KotlinParameter"
+    KOTLIN_IMPORT = "KotlinImport"
+    KOTLIN_PACKAGE = "KotlinPackage"
+    KOTLIN_ANNOTATION = "KotlinAnnotation"
+    KOTLIN_ENUM = "KotlinEnum"
+    KOTLIN_ENUM_ENTRY = "KotlinEnumEntry"
+    KOTLIN_TYPEALIAS = "KotlinTypealias"
 
 
 class RelationshipType(Enum):
@@ -112,6 +133,29 @@ class RelationshipType(Enum):
     DART_USES_TYPE = "DART_USES_TYPE"
     DART_EXPORTS = "DART_EXPORTS"
     DART_PARTS = "DART_PARTS"
+    
+    # Kotlin relationships
+    DEFINES_KOTLIN_CLASS = "DEFINES_KOTLIN_CLASS"
+    DEFINES_KOTLIN_INTERFACE = "DEFINES_KOTLIN_INTERFACE"
+    DEFINES_KOTLIN_DATA_CLASS = "DEFINES_KOTLIN_DATA_CLASS"
+    DEFINES_KOTLIN_SEALED_CLASS = "DEFINES_KOTLIN_SEALED_CLASS"
+    DEFINES_KOTLIN_OBJECT = "DEFINES_KOTLIN_OBJECT"
+    DEFINES_KOTLIN_COMPANION_OBJECT = "DEFINES_KOTLIN_COMPANION_OBJECT"
+    DEFINES_KOTLIN_FUNCTION = "DEFINES_KOTLIN_FUNCTION"
+    DEFINES_KOTLIN_METHOD = "DEFINES_KOTLIN_METHOD"
+    DEFINES_KOTLIN_EXTENSION_FUNCTION = "DEFINES_KOTLIN_EXTENSION_FUNCTION"
+    DEFINES_KOTLIN_CONSTRUCTOR = "DEFINES_KOTLIN_CONSTRUCTOR"
+    DEFINES_KOTLIN_PROPERTY = "DEFINES_KOTLIN_PROPERTY"
+    DEFINES_KOTLIN_FIELD = "DEFINES_KOTLIN_FIELD"
+    DEFINES_KOTLIN_ENUM = "DEFINES_KOTLIN_ENUM"
+    DEFINES_KOTLIN_TYPEALIAS = "DEFINES_KOTLIN_TYPEALIAS"
+    KOTLIN_EXTENDS = "KOTLIN_EXTENDS"
+    KOTLIN_IMPLEMENTS = "KOTLIN_IMPLEMENTS"
+    KOTLIN_OVERRIDES = "KOTLIN_OVERRIDES"
+    KOTLIN_USES_TYPE = "KOTLIN_USES_TYPE"
+    KOTLIN_ANNOTATED_BY = "KOTLIN_ANNOTATED_BY"
+    KOTLIN_COMPILES_TO = "KOTLIN_COMPILES_TO"
+    KOTLIN_DEPENDS_ON = "KOTLIN_DEPENDS_ON"
 
 
 @dataclass
@@ -323,6 +367,89 @@ class CKGSchema:
         NodeType.DART_TYPEDEF: {
             'required': ['name', 'type', 'file_path', 'line_number'],
             'optional': ['full_name']
+        },
+        
+        # Kotlin nodes
+        NodeType.KOTLIN_CLASS: {
+            'required': ['name', 'type', 'file_path', 'line_number'],
+            'optional': ['package_name', 'full_name', 'modifiers', 'is_abstract', 'is_final', 'is_static', 
+                        'extends_class', 'implements_interfaces', 'methods_count', 'fields_count', 'constructors_count']
+        },
+        NodeType.KOTLIN_INTERFACE: {
+            'required': ['name', 'type', 'file_path', 'line_number'],
+            'optional': ['package_name', 'full_name', 'modifiers', 'extends_interfaces', 'methods_count', 'fields_count']
+        },
+        NodeType.KOTLIN_DATA_CLASS: {
+            'required': ['name', 'type', 'file_path', 'line_number'],
+            'optional': ['package_name', 'full_name', 'modifiers', 'is_abstract', 'is_final', 'is_static', 
+                        'extends_class', 'implements_interfaces', 'methods_count', 'fields_count', 'constructors_count']
+        },
+        NodeType.KOTLIN_SEALED_CLASS: {
+            'required': ['name', 'type', 'file_path', 'line_number'],
+            'optional': ['package_name', 'full_name', 'modifiers', 'is_abstract', 'is_final', 'is_static', 
+                        'extends_class', 'implements_interfaces', 'methods_count', 'fields_count', 'constructors_count']
+        },
+        NodeType.KOTLIN_OBJECT: {
+            'required': ['name', 'type', 'file_path', 'line_number'],
+            'optional': ['package_name', 'full_name', 'modifiers', 'is_abstract', 'is_final', 'is_static', 
+                        'extends_class', 'implements_interfaces', 'methods_count', 'fields_count', 'constructors_count']
+        },
+        NodeType.KOTLIN_COMPANION_OBJECT: {
+            'required': ['name', 'type', 'file_path', 'line_number'],
+            'optional': ['package_name', 'full_name', 'modifiers', 'is_abstract', 'is_final', 'is_static', 
+                        'extends_class', 'implements_interfaces', 'methods_count', 'fields_count', 'constructors_count']
+        },
+        NodeType.KOTLIN_FUNCTION: {
+            'required': ['name', 'type', 'file_path', 'line_number'],
+            'optional': ['return_type', 'parameters_count', 'complexity', 'is_async', 'is_generator']
+        },
+        NodeType.KOTLIN_METHOD: {
+            'required': ['name', 'type', 'file_path', 'line_number'],
+            'optional': ['return_type', 'parameters_count', 'complexity', 'is_async', 'is_static', 'is_class_method', 'is_property']
+        },
+        NodeType.KOTLIN_EXTENSION_FUNCTION: {
+            'required': ['name', 'type', 'file_path', 'line_number'],
+            'optional': ['return_type', 'parameters_count', 'complexity', 'is_async', 'is_generator']
+        },
+        NodeType.KOTLIN_CONSTRUCTOR: {
+            'required': ['name', 'type', 'file_path', 'line_number'],
+            'optional': ['parameters']
+        },
+        NodeType.KOTLIN_PROPERTY: {
+            'required': ['name', 'type', 'file_path', 'line_number'],
+            'optional': ['return_type']
+        },
+        NodeType.KOTLIN_FIELD: {
+            'required': ['name', 'type', 'file_path', 'line_number'],
+            'optional': ['field_type', 'modifiers', 'is_static', 'is_final', 'is_volatile', 'is_transient', 'initial_value']
+        },
+        NodeType.KOTLIN_PARAMETER: {
+            'required': ['name', 'type', 'file_path', 'line_number'],
+            'optional': ['param_type', 'default_value', 'is_keyword_only', 'is_positional_only']
+        },
+        NodeType.KOTLIN_IMPORT: {
+            'required': ['name', 'type', 'file_path', 'line_number'],
+            'optional': ['module_name', 'imported_name', 'alias', 'is_from_import']
+        },
+        NodeType.KOTLIN_PACKAGE: {
+            'required': ['name', 'type', 'file_path', 'line_number'],
+            'optional': ['full_name', 'classes_count', 'interfaces_count']
+        },
+        NodeType.KOTLIN_ANNOTATION: {
+            'required': ['name', 'type', 'file_path', 'line_number'],
+            'optional': ['arguments', 'target_type']
+        },
+        NodeType.KOTLIN_ENUM: {
+            'required': ['name', 'type', 'file_path', 'line_number'],
+            'optional': ['package_name', 'full_name', 'modifiers', 'implements_interfaces', 'constants_count', 'methods_count']
+        },
+        NodeType.KOTLIN_ENUM_ENTRY: {
+            'required': ['name', 'type', 'file_path', 'line_number'],
+            'optional': ['arguments', 'ordinal']
+        },
+        NodeType.KOTLIN_TYPEALIAS: {
+            'required': ['name', 'type', 'file_path', 'line_number'],
+            'optional': ['full_name']
         }
     }
     
@@ -394,7 +521,30 @@ class CKGSchema:
         RelationshipType.DART_OVERRIDES: [(NodeType.DART_METHOD, NodeType.DART_METHOD)],
         RelationshipType.DART_USES_TYPE: [(NodeType.DART_METHOD, NodeType.DART_CLASS)],
         RelationshipType.DART_EXPORTS: [(NodeType.DART_CLASS, NodeType.DART_EXPORT)],
-        RelationshipType.DART_PARTS: [(NodeType.DART_CLASS, NodeType.DART_PART)]
+        RelationshipType.DART_PARTS: [(NodeType.DART_CLASS, NodeType.DART_PART)],
+        
+        # Kotlin relationships
+        RelationshipType.DEFINES_KOTLIN_CLASS: [(NodeType.JAVA_PACKAGE, NodeType.KOTLIN_CLASS), (NodeType.FILE, NodeType.KOTLIN_CLASS)],
+        RelationshipType.DEFINES_KOTLIN_INTERFACE: [(NodeType.JAVA_PACKAGE, NodeType.KOTLIN_INTERFACE), (NodeType.FILE, NodeType.KOTLIN_INTERFACE)],
+        RelationshipType.DEFINES_KOTLIN_DATA_CLASS: [(NodeType.JAVA_PACKAGE, NodeType.KOTLIN_DATA_CLASS), (NodeType.FILE, NodeType.KOTLIN_DATA_CLASS)],
+        RelationshipType.DEFINES_KOTLIN_SEALED_CLASS: [(NodeType.JAVA_PACKAGE, NodeType.KOTLIN_SEALED_CLASS), (NodeType.FILE, NodeType.KOTLIN_SEALED_CLASS)],
+        RelationshipType.DEFINES_KOTLIN_OBJECT: [(NodeType.JAVA_PACKAGE, NodeType.KOTLIN_OBJECT), (NodeType.FILE, NodeType.KOTLIN_OBJECT)],
+        RelationshipType.DEFINES_KOTLIN_COMPANION_OBJECT: [(NodeType.JAVA_PACKAGE, NodeType.KOTLIN_COMPANION_OBJECT), (NodeType.FILE, NodeType.KOTLIN_COMPANION_OBJECT)],
+        RelationshipType.DEFINES_KOTLIN_FUNCTION: [(NodeType.JAVA_PACKAGE, NodeType.KOTLIN_FUNCTION), (NodeType.FILE, NodeType.KOTLIN_FUNCTION)],
+        RelationshipType.DEFINES_KOTLIN_METHOD: [(NodeType.KOTLIN_CLASS, NodeType.KOTLIN_METHOD), (NodeType.KOTLIN_INTERFACE, NodeType.KOTLIN_METHOD)],
+        RelationshipType.DEFINES_KOTLIN_EXTENSION_FUNCTION: [(NodeType.KOTLIN_CLASS, NodeType.KOTLIN_EXTENSION_FUNCTION), (NodeType.KOTLIN_INTERFACE, NodeType.KOTLIN_EXTENSION_FUNCTION)],
+        RelationshipType.DEFINES_KOTLIN_CONSTRUCTOR: [(NodeType.KOTLIN_CLASS, NodeType.KOTLIN_CONSTRUCTOR), (NodeType.KOTLIN_INTERFACE, NodeType.KOTLIN_CONSTRUCTOR)],
+        RelationshipType.DEFINES_KOTLIN_PROPERTY: [(NodeType.KOTLIN_CLASS, NodeType.KOTLIN_PROPERTY), (NodeType.KOTLIN_INTERFACE, NodeType.KOTLIN_PROPERTY)],
+        RelationshipType.DEFINES_KOTLIN_FIELD: [(NodeType.KOTLIN_CLASS, NodeType.KOTLIN_FIELD), (NodeType.KOTLIN_INTERFACE, NodeType.KOTLIN_FIELD)],
+        RelationshipType.DEFINES_KOTLIN_ENUM: [(NodeType.KOTLIN_CLASS, NodeType.KOTLIN_ENUM), (NodeType.KOTLIN_INTERFACE, NodeType.KOTLIN_ENUM)],
+        RelationshipType.DEFINES_KOTLIN_TYPEALIAS: [(NodeType.JAVA_PACKAGE, NodeType.KOTLIN_TYPEALIAS), (NodeType.FILE, NodeType.KOTLIN_TYPEALIAS)],
+        RelationshipType.KOTLIN_EXTENDS: [(NodeType.KOTLIN_CLASS, NodeType.KOTLIN_CLASS), (NodeType.KOTLIN_INTERFACE, NodeType.KOTLIN_INTERFACE)],
+        RelationshipType.KOTLIN_IMPLEMENTS: [(NodeType.KOTLIN_CLASS, NodeType.KOTLIN_INTERFACE), (NodeType.KOTLIN_INTERFACE, NodeType.KOTLIN_INTERFACE)],
+        RelationshipType.KOTLIN_OVERRIDES: [(NodeType.KOTLIN_METHOD, NodeType.KOTLIN_METHOD)],
+        RelationshipType.KOTLIN_USES_TYPE: [(NodeType.KOTLIN_METHOD, NodeType.KOTLIN_CLASS)],
+        RelationshipType.KOTLIN_ANNOTATED_BY: [(NodeType.KOTLIN_CLASS, NodeType.KOTLIN_ANNOTATION), (NodeType.KOTLIN_METHOD, NodeType.KOTLIN_ANNOTATION)],
+        RelationshipType.KOTLIN_COMPILES_TO: [(NodeType.KOTLIN_CLASS, NodeType.KOTLIN_FUNCTION)],
+        RelationshipType.KOTLIN_DEPENDS_ON: [(NodeType.KOTLIN_FUNCTION, NodeType.KOTLIN_CLASS)]
     }
     
     @classmethod

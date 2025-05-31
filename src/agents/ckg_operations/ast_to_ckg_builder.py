@@ -227,6 +227,8 @@ class ASTtoCKGBuilderAgent:
                 queries.extend(self._process_java_file(parsed_file, file_node))
             elif parsed_file.language == 'Dart':
                 queries.extend(self._process_dart_file(parsed_file, file_node))
+            elif parsed_file.language == 'Kotlin':
+                queries.extend(self._process_kotlin_file(parsed_file, file_node))
             else:
                 logger.warning(f"Unsupported language: {parsed_file.language}")
             
@@ -1717,25 +1719,23 @@ class ASTtoCKGBuilderAgent:
         """Tạo Dart enum node."""
         node_id = self._generate_node_id(NodeType.DART_ENUM, parsed_file.file_path, 1, enum_name)
         
-        library_name = library_node.name if library_node else None
-        full_name = f"{library_name}.{enum_name}" if library_name else enum_name
+        properties = {
+            'id': node_id,
+            'package_name': library_node.name if library_node else '',
+            'full_name': f"{library_node.name}.{enum_name}" if library_node else enum_name,
+            'modifiers': ['enum'],
+            'implements_interfaces': [],
+            'constants_count': 0,
+            'methods_count': 0
+        }
         
-        node = NodeProperties(
+        return NodeProperties(
             name=enum_name,
             type=NodeType.DART_ENUM,
             file_path=parsed_file.file_path,
             line_number=1,
-            properties={
-                'id': node_id,
-                'package_name': library_name,
-                'full_name': full_name,
-                'constants_count': 0,
-                'methods_count': 0
-            }
+            properties=properties
         )
-        
-        self.created_nodes[node_id] = node
-        return node
     
     def _create_dart_typedef_node(self, typedef_name: str, parsed_file: ParsedFile, library_node: Optional[NodeProperties]) -> NodeProperties:
         """Tạo Dart typedef node."""
@@ -1757,4 +1757,444 @@ class ASTtoCKGBuilderAgent:
         )
         
         self.created_nodes[node_id] = node
-        return node 
+        return node
+
+    # ===============================
+    # Kotlin Processing Methods
+    # ===============================
+    
+    def _process_kotlin_file(self, parsed_file: ParsedFile, file_node: NodeProperties) -> List[str]:
+        """
+        Xử lý Kotlin file AST.
+        
+        Args:
+            parsed_file: Parsed Kotlin file
+            file_node: File node đã tạo
+            
+        Returns:
+            List[str]: Danh sách Cypher queries
+        """
+        queries = []
+        
+        try:
+            # Import Kotlin classes safely
+            try:
+                from agents.ckg_operations.kotlin_parser import KotlinParseInfo
+            except ImportError:
+                logger.warning("KotlinParseInfo not available - skipping Kotlin file processing")
+                return queries
+            
+            kotlin_ast = parsed_file.ast_tree
+            if not isinstance(kotlin_ast, KotlinParseInfo):
+                logger.warning(f"Expected KotlinParseInfo, got {type(kotlin_ast)}")
+                return queries
+            
+            # Process Kotlin AST structure
+            queries.extend(self._process_kotlin_ast(kotlin_ast, parsed_file, file_node))
+            
+        except Exception as e:
+            logger.error(f"Error processing Kotlin file {parsed_file.relative_path}: {e}")
+        
+        return queries
+    
+    def _process_kotlin_ast(self, kotlin_ast: 'KotlinParseInfo', parsed_file: ParsedFile, file_node: NodeProperties) -> List[str]:
+        """
+        Xử lý Kotlin AST structure.
+        
+        Args:
+            kotlin_ast: Kotlin AST parse info
+            parsed_file: Parsed file info
+            file_node: File node đã tạo
+            
+        Returns:
+            List[str]: Cypher queries
+        """
+        queries = []
+        
+        try:
+            # Extract package information
+            package_node = None
+            if kotlin_ast.package_name:
+                package_node = self._create_kotlin_package_node(
+                    kotlin_ast.package_name, 
+                    parsed_file
+                )
+                queries.append(self.schema.get_cypher_create_node(package_node))
+                
+                # Link file to package
+                belongs_to_rel = RelationshipProperties(
+                    type=RelationshipType.BELONGS_TO,
+                    source_node_id=file_node.properties['id'],
+                    target_node_id=package_node.properties['id']
+                )
+                queries.append(self.schema.get_cypher_create_relationship(belongs_to_rel))
+                self.created_relationships.append(belongs_to_rel)
+            
+            # Process imports
+            if kotlin_ast.imports:
+                for import_info in kotlin_ast.imports:
+                    import_name = import_info.name if hasattr(import_info, 'name') else str(import_info)
+                    import_node = self._create_kotlin_import_node(import_name, parsed_file)
+                    queries.append(self.schema.get_cypher_create_node(import_node))
+                    
+                    # Link file to import
+                    imports_rel = RelationshipProperties(
+                        type=RelationshipType.IMPORTS,
+                        source_node_id=file_node.properties['id'],
+                        target_node_id=import_node.properties['id']
+                    )
+                    queries.append(self.schema.get_cypher_create_relationship(imports_rel))
+                    self.created_relationships.append(imports_rel)
+            
+            # Process classes
+            if kotlin_ast.classes:
+                for class_info in kotlin_ast.classes:
+                    class_name = class_info.name if hasattr(class_info, 'name') else str(class_info)
+                    queries.extend(self._process_kotlin_class(class_name, parsed_file, file_node, package_node))
+            
+            # Process data classes
+            if kotlin_ast.data_classes:
+                for data_class_info in kotlin_ast.data_classes:
+                    data_class_name = data_class_info.name if hasattr(data_class_info, 'name') else str(data_class_info)
+                    queries.extend(self._process_kotlin_data_class(data_class_name, parsed_file, file_node, package_node))
+            
+            # Process interfaces
+            if kotlin_ast.interfaces:
+                for interface_info in kotlin_ast.interfaces:
+                    interface_name = interface_info.name if hasattr(interface_info, 'name') else str(interface_info)
+                    queries.extend(self._process_kotlin_interface(interface_name, parsed_file, file_node, package_node))
+            
+            # Process objects
+            if kotlin_ast.objects:
+                for object_info in kotlin_ast.objects:
+                    object_name = object_info.name if hasattr(object_info, 'name') else str(object_info)
+                    queries.extend(self._process_kotlin_object(object_name, parsed_file, file_node, package_node))
+            
+            # Process functions
+            if kotlin_ast.functions:
+                for function_info in kotlin_ast.functions:
+                    function_name = function_info.name if hasattr(function_info, 'name') else str(function_info)
+                    queries.extend(self._process_kotlin_function(function_name, parsed_file, file_node, package_node))
+            
+            # Process enums
+            if kotlin_ast.enums:
+                for enum_info in kotlin_ast.enums:
+                    enum_name = enum_info.name if hasattr(enum_info, 'name') else str(enum_info)
+                    queries.extend(self._process_kotlin_enum(enum_name, parsed_file, file_node, package_node))
+            
+        except Exception as e:
+            logger.error(f"Error processing Kotlin AST: {e}")
+        
+        return queries
+    
+    def _process_kotlin_class(self, class_name: str, parsed_file: ParsedFile,
+                             file_node: NodeProperties, package_node: Optional[NodeProperties]) -> List[str]:
+        """Process Kotlin class declaration."""
+        queries = []
+        
+        # Create Kotlin class node
+        class_node = self._create_kotlin_class_node(class_name, parsed_file, package_node)
+        queries.append(self.schema.get_cypher_create_node(class_node))
+        
+        # Link file defines class
+        defines_rel = RelationshipProperties(
+            type=RelationshipType.DEFINES_KOTLIN_CLASS,
+            source_node_id=file_node.properties['id'],
+            target_node_id=class_node.properties['id']
+        )
+        queries.append(self.schema.get_cypher_create_relationship(defines_rel))
+        self.created_relationships.append(defines_rel)
+        
+        return queries
+    
+    def _process_kotlin_data_class(self, data_class_name: str, parsed_file: ParsedFile,
+                                  file_node: NodeProperties, package_node: Optional[NodeProperties]) -> List[str]:
+        """Process Kotlin data class declaration."""
+        queries = []
+        
+        # Create Kotlin data class node
+        data_class_node = self._create_kotlin_data_class_node(data_class_name, parsed_file, package_node)
+        queries.append(self.schema.get_cypher_create_node(data_class_node))
+        
+        # Link file defines data class
+        defines_rel = RelationshipProperties(
+            type=RelationshipType.DEFINES_KOTLIN_DATA_CLASS,
+            source_node_id=file_node.properties['id'],
+            target_node_id=data_class_node.properties['id']
+        )
+        queries.append(self.schema.get_cypher_create_relationship(defines_rel))
+        self.created_relationships.append(defines_rel)
+        
+        return queries
+    
+    def _process_kotlin_interface(self, interface_name: str, parsed_file: ParsedFile,
+                                 file_node: NodeProperties, package_node: Optional[NodeProperties]) -> List[str]:
+        """Process Kotlin interface declaration."""
+        queries = []
+        
+        # Create Kotlin interface node
+        interface_node = self._create_kotlin_interface_node(interface_name, parsed_file, package_node)
+        queries.append(self.schema.get_cypher_create_node(interface_node))
+        
+        # Link file defines interface
+        defines_rel = RelationshipProperties(
+            type=RelationshipType.DEFINES_KOTLIN_INTERFACE,
+            source_node_id=file_node.properties['id'],
+            target_node_id=interface_node.properties['id']
+        )
+        queries.append(self.schema.get_cypher_create_relationship(defines_rel))
+        self.created_relationships.append(defines_rel)
+        
+        return queries
+    
+    def _process_kotlin_object(self, object_name: str, parsed_file: ParsedFile,
+                              file_node: NodeProperties, package_node: Optional[NodeProperties]) -> List[str]:
+        """Process Kotlin object declaration."""
+        queries = []
+        
+        # Create Kotlin object node
+        object_node = self._create_kotlin_object_node(object_name, parsed_file, package_node)
+        queries.append(self.schema.get_cypher_create_node(object_node))
+        
+        # Link file defines object
+        defines_rel = RelationshipProperties(
+            type=RelationshipType.DEFINES_KOTLIN_OBJECT,
+            source_node_id=file_node.properties['id'],
+            target_node_id=object_node.properties['id']
+        )
+        queries.append(self.schema.get_cypher_create_relationship(defines_rel))
+        self.created_relationships.append(defines_rel)
+        
+        return queries
+    
+    def _process_kotlin_function(self, function_name: str, parsed_file: ParsedFile,
+                                file_node: NodeProperties, package_node: Optional[NodeProperties]) -> List[str]:
+        """Process Kotlin function declaration."""
+        queries = []
+        
+        # Create Kotlin function node
+        function_node = self._create_kotlin_function_node(function_name, parsed_file, package_node)
+        queries.append(self.schema.get_cypher_create_node(function_node))
+        
+        # Link file defines function
+        defines_rel = RelationshipProperties(
+            type=RelationshipType.DEFINES_KOTLIN_FUNCTION,
+            source_node_id=file_node.properties['id'],
+            target_node_id=function_node.properties['id']
+        )
+        queries.append(self.schema.get_cypher_create_relationship(defines_rel))
+        self.created_relationships.append(defines_rel)
+        
+        return queries
+    
+    def _process_kotlin_enum(self, enum_name: str, parsed_file: ParsedFile,
+                            file_node: NodeProperties, package_node: Optional[NodeProperties]) -> List[str]:
+        """Process Kotlin enum declaration."""
+        queries = []
+        
+        # Create Kotlin enum node
+        enum_node = self._create_kotlin_enum_node(enum_name, parsed_file, package_node)
+        queries.append(self.schema.get_cypher_create_node(enum_node))
+        
+        # Link file defines enum
+        defines_rel = RelationshipProperties(
+            type=RelationshipType.DEFINES_KOTLIN_ENUM,
+            source_node_id=file_node.properties['id'],
+            target_node_id=enum_node.properties['id']
+        )
+        queries.append(self.schema.get_cypher_create_relationship(defines_rel))
+        self.created_relationships.append(defines_rel)
+        
+        return queries
+
+    # Kotlin Node Creation Methods
+    
+    def _create_kotlin_package_node(self, package_name: str, parsed_file: ParsedFile) -> NodeProperties:
+        """Create Kotlin package node."""
+        node_id = self._generate_node_id(NodeType.KOTLIN_PACKAGE, parsed_file.file_path, 1, package_name)
+        
+        properties = {
+            'id': node_id,
+            'full_name': package_name,
+            'classes_count': 0,
+            'interfaces_count': 0
+        }
+        
+        return NodeProperties(
+            name=package_name,
+            type=NodeType.KOTLIN_PACKAGE,
+            file_path=parsed_file.file_path,
+            line_number=1,
+            properties=properties
+        )
+    
+    def _create_kotlin_import_node(self, import_name: str, parsed_file: ParsedFile) -> NodeProperties:
+        """Create Kotlin import node."""
+        node_id = self._generate_node_id(NodeType.KOTLIN_IMPORT, parsed_file.file_path, 1, import_name)
+        
+        properties = {
+            'id': node_id,
+            'imported_name': import_name,
+            'is_static_import': False,
+            'is_wildcard_import': '*' in import_name
+        }
+        
+        return NodeProperties(
+            name=import_name,
+            type=NodeType.KOTLIN_IMPORT,
+            file_path=parsed_file.file_path,
+            line_number=1,
+            properties=properties
+        )
+    
+    def _create_kotlin_class_node(self, class_name: str, parsed_file: ParsedFile,
+                                 package_node: Optional[NodeProperties]) -> NodeProperties:
+        """Create Kotlin class node."""
+        node_id = self._generate_node_id(NodeType.KOTLIN_CLASS, parsed_file.file_path, 1, class_name)
+        
+        properties = {
+            'id': node_id,
+            'package_name': package_node.name if package_node else '',
+            'full_name': f"{package_node.name}.{class_name}" if package_node else class_name,
+            'modifiers': [],
+            'is_abstract': False,
+            'is_final': False,
+            'is_static': False,
+            'extends_class': '',
+            'implements_interfaces': [],
+            'methods_count': 0,
+            'fields_count': 0,
+            'constructors_count': 0
+        }
+        
+        return NodeProperties(
+            name=class_name,
+            type=NodeType.KOTLIN_CLASS,
+            file_path=parsed_file.file_path,
+            line_number=1,
+            properties=properties
+        )
+    
+    def _create_kotlin_data_class_node(self, data_class_name: str, parsed_file: ParsedFile,
+                                      package_node: Optional[NodeProperties]) -> NodeProperties:
+        """Create Kotlin data class node."""
+        node_id = self._generate_node_id(NodeType.KOTLIN_DATA_CLASS, parsed_file.file_path, 1, data_class_name)
+        
+        properties = {
+            'id': node_id,
+            'package_name': package_node.name if package_node else '',
+            'full_name': f"{package_node.name}.{data_class_name}" if package_node else data_class_name,
+            'modifiers': ['data'],
+            'is_abstract': False,
+            'is_final': True,  # Data classes are final by default
+            'is_static': False,
+            'extends_class': '',
+            'implements_interfaces': [],
+            'methods_count': 0,
+            'fields_count': 0,
+            'constructors_count': 1  # Data classes have primary constructor
+        }
+        
+        return NodeProperties(
+            name=data_class_name,
+            type=NodeType.KOTLIN_DATA_CLASS,
+            file_path=parsed_file.file_path,
+            line_number=1,
+            properties=properties
+        )
+    
+    def _create_kotlin_interface_node(self, interface_name: str, parsed_file: ParsedFile,
+                                     package_node: Optional[NodeProperties]) -> NodeProperties:
+        """Create Kotlin interface node."""
+        node_id = self._generate_node_id(NodeType.KOTLIN_INTERFACE, parsed_file.file_path, 1, interface_name)
+        
+        properties = {
+            'id': node_id,
+            'package_name': package_node.name if package_node else '',
+            'full_name': f"{package_node.name}.{interface_name}" if package_node else interface_name,
+            'modifiers': [],
+            'extends_interfaces': [],
+            'methods_count': 0,
+            'fields_count': 0
+        }
+        
+        return NodeProperties(
+            name=interface_name,
+            type=NodeType.KOTLIN_INTERFACE,
+            file_path=parsed_file.file_path,
+            line_number=1,
+            properties=properties
+        )
+    
+    def _create_kotlin_object_node(self, object_name: str, parsed_file: ParsedFile,
+                                  package_node: Optional[NodeProperties]) -> NodeProperties:
+        """Create Kotlin object node."""
+        node_id = self._generate_node_id(NodeType.KOTLIN_OBJECT, parsed_file.file_path, 1, object_name)
+        
+        properties = {
+            'id': node_id,
+            'package_name': package_node.name if package_node else '',
+            'full_name': f"{package_node.name}.{object_name}" if package_node else object_name,
+            'modifiers': ['object'],
+            'is_abstract': False,
+            'is_final': True,  # Objects are final
+            'is_static': True,   # Objects are singleton
+            'extends_class': '',
+            'implements_interfaces': [],
+            'methods_count': 0,
+            'fields_count': 0,
+            'constructors_count': 0  # Objects don't have constructors
+        }
+        
+        return NodeProperties(
+            name=object_name,
+            type=NodeType.KOTLIN_OBJECT,
+            file_path=parsed_file.file_path,
+            line_number=1,
+            properties=properties
+        )
+    
+    def _create_kotlin_function_node(self, function_name: str, parsed_file: ParsedFile,
+                                    package_node: Optional[NodeProperties]) -> NodeProperties:
+        """Create Kotlin function node."""
+        node_id = self._generate_node_id(NodeType.KOTLIN_FUNCTION, parsed_file.file_path, 1, function_name)
+        
+        properties = {
+            'id': node_id,
+            'return_type': 'Unit',
+            'parameters_count': 0,
+            'complexity': 1,
+            'is_async': False,
+            'is_generator': False
+        }
+        
+        return NodeProperties(
+            name=function_name,
+            type=NodeType.KOTLIN_FUNCTION,
+            file_path=parsed_file.file_path,
+            line_number=1,
+            properties=properties
+        )
+    
+    def _create_kotlin_enum_node(self, enum_name: str, parsed_file: ParsedFile,
+                                package_node: Optional[NodeProperties]) -> NodeProperties:
+        """Create Kotlin enum node."""
+        node_id = self._generate_node_id(NodeType.KOTLIN_ENUM, parsed_file.file_path, 1, enum_name)
+        
+        properties = {
+            'id': node_id,
+            'package_name': package_node.name if package_node else '',
+            'full_name': f"{package_node.name}.{enum_name}" if package_node else enum_name,
+            'modifiers': ['enum'],
+            'implements_interfaces': [],
+            'constants_count': 0,
+            'methods_count': 0
+        }
+        
+        return NodeProperties(
+            name=enum_name,
+            type=NodeType.KOTLIN_ENUM,
+            file_path=parsed_file.file_path,
+            line_number=1,
+            properties=properties
+        ) 
