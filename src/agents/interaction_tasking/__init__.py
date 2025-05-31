@@ -1,28 +1,58 @@
+#!/usr/bin/env python3
 """
-TEAM Interaction & Tasking
+AI CodeScan - Interaction & Tasking Module
 
-This module handles user interaction and task initiation,
-specifically focused on the Web UI interface using Streamlit.
+Module xử lý tương tác người dùng và khởi tạo tác vụ.
 """
 
-from .user_intent_parser import UserIntentParserAgent
-from .dialog_manager import DialogManagerAgent  
-from .task_initiation import TaskInitiationAgent, TaskDefinition
-from .presentation import PresentationAgent
-from .history_manager import HistoryManager, SessionType, SessionStatus, ScanResult, ChatMessage
-from .pat_handler import PATHandlerAgent, PATInfo
+from .user_intent_parser import (
+    UserIntentParserAgent,
+    IntentType,
+    UserIntent,
+    ParsedIntent
+)
+
+from .task_initiation import (
+    TaskInitiationAgent,
+    TaskType,
+    TaskRequest,
+    TaskContext,
+    InitiatedTask
+)
+
+from .dialog_manager import DialogManagerAgent
+from .history_manager import HistoryManagerAgent
+from .pat_handler import PATHandlerAgent
+
+from .qa_interaction import (
+    QAInteractionAgent,
+    QAMessage,
+    QAConversation,
+    QAAnswer
+)
 
 __all__ = [
+    # Intent Parsing
     'UserIntentParserAgent',
-    'DialogManagerAgent', 
+    'IntentType',
+    'UserIntent',
+    'ParsedIntent',
+    
+    # Task Initiation
     'TaskInitiationAgent',
-    'PresentationAgent',
-    'HistoryManager',
-    'SessionType',
-    'SessionStatus', 
-    'ScanResult',
-    'ChatMessage',
+    'TaskType',
+    'TaskRequest', 
+    'TaskContext',
+    'InitiatedTask',
+    
+    # Dialog & History Management
+    'DialogManagerAgent',
+    'HistoryManagerAgent',
     'PATHandlerAgent',
-    'PATInfo',
-    'TaskDefinition'
+    
+    # Q&A Interaction
+    'QAInteractionAgent',
+    'QAMessage',
+    'QAConversation',
+    'QAAnswer'
 ]
