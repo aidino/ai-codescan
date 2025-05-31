@@ -13,8 +13,11 @@ from dataclasses import dataclass
 
 class NodeType(Enum):
     """Định nghĩa các loại nodes trong CKG."""
+    # Common nodes
     FILE = "File"
     MODULE = "Module"
+    
+    # Python nodes
     CLASS = "Class"
     FUNCTION = "Function"
     METHOD = "Method"
@@ -22,12 +25,49 @@ class NodeType(Enum):
     PARAMETER = "Parameter"
     IMPORT = "Import"
     DECORATOR = "Decorator"
+    
+    # Java nodes
+    JAVA_CLASS = "JavaClass"
+    JAVA_INTERFACE = "JavaInterface"
+    JAVA_METHOD = "JavaMethod"
+    JAVA_FIELD = "JavaField"
+    JAVA_CONSTRUCTOR = "JavaConstructor"
+    JAVA_PACKAGE = "JavaPackage"
+    JAVA_IMPORT = "JavaImport"
+    JAVA_ANNOTATION = "JavaAnnotation"
+    JAVA_ENUM = "JavaEnum"
+    JAVA_ENUM_CONSTANT = "JavaEnumConstant"
+    
+    # Dart nodes
+    DART_CLASS = "DartClass"
+    DART_MIXIN = "DartMixin"
+    DART_EXTENSION = "DartExtension"
+    DART_FUNCTION = "DartFunction"
+    DART_METHOD = "DartMethod"
+    DART_GETTER = "DartGetter"
+    DART_SETTER = "DartSetter"
+    DART_CONSTRUCTOR = "DartConstructor"
+    DART_FIELD = "DartField"
+    DART_VARIABLE = "DartVariable"
+    DART_PARAMETER = "DartParameter"
+    DART_IMPORT = "DartImport"
+    DART_EXPORT = "DartExport"
+    DART_PART = "DartPart"
+    DART_LIBRARY = "DartLibrary"
+    DART_ENUM = "DartEnum"
+    DART_ENUM_VALUE = "DartEnumValue"
+    DART_TYPEDEF = "DartTypedef"
 
 
 class RelationshipType(Enum):
     """Định nghĩa các loại relationships trong CKG."""
+    # Common relationships
     IMPORTS = "IMPORTS"
     CALLS = "CALLS"
+    CONTAINS = "CONTAINS"
+    BELONGS_TO = "BELONGS_TO"
+    
+    # Python relationships
     DEFINES_CLASS = "DEFINES_CLASS"
     DEFINES_FUNCTION = "DEFINES_FUNCTION"
     DEFINES_METHOD = "DEFINES_METHOD"
@@ -35,10 +75,43 @@ class RelationshipType(Enum):
     HAS_PARAMETER = "HAS_PARAMETER"
     INHERITS_FROM = "INHERITS_FROM"
     DECORATED_BY = "DECORATED_BY"
-    CONTAINS = "CONTAINS"
-    BELONGS_TO = "BELONGS_TO"
     ASSIGNS_TO = "ASSIGNS_TO"
     ACCESSES = "ACCESSES"
+    
+    # Java relationships
+    DEFINES_JAVA_CLASS = "DEFINES_JAVA_CLASS"
+    DEFINES_JAVA_INTERFACE = "DEFINES_JAVA_INTERFACE"
+    DEFINES_JAVA_METHOD = "DEFINES_JAVA_METHOD"
+    DEFINES_JAVA_FIELD = "DEFINES_JAVA_FIELD"
+    DEFINES_JAVA_CONSTRUCTOR = "DEFINES_JAVA_CONSTRUCTOR"
+    JAVA_EXTENDS = "JAVA_EXTENDS"
+    JAVA_IMPLEMENTS = "JAVA_IMPLEMENTS"
+    JAVA_ANNOTATED_BY = "JAVA_ANNOTATED_BY"
+    JAVA_THROWS = "JAVA_THROWS"
+    JAVA_OVERRIDES = "JAVA_OVERRIDES"
+    JAVA_USES_TYPE = "JAVA_USES_TYPE"
+    
+    # Dart relationships
+    DEFINES_DART_CLASS = "DEFINES_DART_CLASS"
+    DEFINES_DART_MIXIN = "DEFINES_DART_MIXIN"
+    DEFINES_DART_EXTENSION = "DEFINES_DART_EXTENSION"
+    DEFINES_DART_FUNCTION = "DEFINES_DART_FUNCTION"
+    DEFINES_DART_METHOD = "DEFINES_DART_METHOD"
+    DEFINES_DART_GETTER = "DEFINES_DART_GETTER"
+    DEFINES_DART_SETTER = "DEFINES_DART_SETTER"
+    DEFINES_DART_CONSTRUCTOR = "DEFINES_DART_CONSTRUCTOR"
+    DEFINES_DART_FIELD = "DEFINES_DART_FIELD"
+    DEFINES_DART_VARIABLE = "DEFINES_DART_VARIABLE"
+    DEFINES_DART_ENUM = "DEFINES_DART_ENUM"
+    DEFINES_DART_TYPEDEF = "DEFINES_DART_TYPEDEF"
+    DART_EXTENDS = "DART_EXTENDS"
+    DART_IMPLEMENTS = "DART_IMPLEMENTS"
+    DART_MIXES_IN = "DART_MIXES_IN"
+    DART_EXTENDS_TYPE = "DART_EXTENDS_TYPE"  # For extension types
+    DART_OVERRIDES = "DART_OVERRIDES"
+    DART_USES_TYPE = "DART_USES_TYPE"
+    DART_EXPORTS = "DART_EXPORTS"
+    DART_PARTS = "DART_PARTS"
 
 
 @dataclass
@@ -72,13 +145,28 @@ class RelationshipProperties:
 
 class CKGSchema:
     """
-    CKG Schema Definition cho Python.
+    CKG Schema Definition cho Python, Java, và Dart.
     
-    Định nghĩa cấu trúc và quy tắc cho việc xây dựng Code Knowledge Graph.
+    Định nghĩa cấu trúc và quy tắc cho việc xây dựng Code Knowledge Graph
+    hỗ trợ Python, Java, và Dart programming languages.
+    
+    Features:
+    - Python nodes: Class, Function, Method, Variable, Parameter, Import, Decorator
+    - Java nodes: JavaClass, JavaInterface, JavaMethod, JavaField, JavaConstructor, 
+                  JavaPackage, JavaImport, JavaAnnotation, JavaEnum, JavaEnumConstant
+    - Dart nodes: DartClass, DartMixin, DartExtension, DartFunction, DartMethod, DartGetter, DartSetter,
+                  DartConstructor, DartField, DartVariable, DartParameter, DartImport, DartExport,
+                  DartPart, DartLibrary, DartEnum, DartEnumValue, DartTypedef
+    - Common relationships: IMPORTS, CALLS, CONTAINS, BELONGS_TO
+    - Language-specific relationships: 
+      * Python: INHERITS_FROM, DECORATED_BY
+      * Java: JAVA_EXTENDS, JAVA_IMPLEMENTS, JAVA_ANNOTATED_BY
+      * Dart: DART_EXTENDS, DART_IMPLEMENTS, DART_MIXES_IN, DART_EXTENDS_TYPE, DART_EXPORTS, DART_PARTS
     """
     
     # Properties cho từng loại node
     NODE_PROPERTIES = {
+        # Common nodes
         NodeType.FILE: {
             'required': ['name', 'type', 'file_path', 'line_number'],
             'optional': ['size_bytes', 'encoding', 'is_test_file', 'language']
@@ -87,6 +175,8 @@ class CKGSchema:
             'required': ['name', 'type', 'file_path', 'line_number'],
             'optional': ['docstring', 'imports_count', 'classes_count', 'functions_count']
         },
+        
+        # Python nodes
         NodeType.CLASS: {
             'required': ['name', 'type', 'file_path', 'line_number'],
             'optional': ['docstring', 'is_abstract', 'base_classes', 'methods_count', 'attributes_count']
@@ -114,13 +204,151 @@ class CKGSchema:
         NodeType.DECORATOR: {
             'required': ['name', 'type', 'file_path', 'line_number'],
             'optional': ['arguments', 'is_builtin']
+        },
+        
+        # Java nodes
+        NodeType.JAVA_PACKAGE: {
+            'required': ['name', 'type', 'file_path', 'line_number'],
+            'optional': ['full_name', 'classes_count', 'interfaces_count']
+        },
+        NodeType.JAVA_CLASS: {
+            'required': ['name', 'type', 'file_path', 'line_number'],
+            'optional': ['package_name', 'full_name', 'modifiers', 'is_abstract', 'is_final', 'is_static', 
+                        'extends_class', 'implements_interfaces', 'methods_count', 'fields_count', 'constructors_count']
+        },
+        NodeType.JAVA_INTERFACE: {
+            'required': ['name', 'type', 'file_path', 'line_number'],
+            'optional': ['package_name', 'full_name', 'modifiers', 'extends_interfaces', 'methods_count', 'fields_count']
+        },
+        NodeType.JAVA_METHOD: {
+            'required': ['name', 'type', 'file_path', 'line_number'],
+            'optional': ['modifiers', 'return_type', 'parameters', 'throws_exceptions', 'is_abstract', 
+                        'is_static', 'is_final', 'is_synchronized', 'is_native', 'overrides_method']
+        },
+        NodeType.JAVA_CONSTRUCTOR: {
+            'required': ['name', 'type', 'file_path', 'line_number'],
+            'optional': ['modifiers', 'parameters', 'throws_exceptions']
+        },
+        NodeType.JAVA_FIELD: {
+            'required': ['name', 'type', 'file_path', 'line_number'],
+            'optional': ['field_type', 'modifiers', 'is_static', 'is_final', 'is_volatile', 'is_transient', 'initial_value']
+        },
+        NodeType.JAVA_IMPORT: {
+            'required': ['name', 'type', 'file_path', 'line_number'],
+            'optional': ['imported_name', 'is_static_import', 'is_wildcard_import']
+        },
+        NodeType.JAVA_ANNOTATION: {
+            'required': ['name', 'type', 'file_path', 'line_number'],
+            'optional': ['arguments', 'target_type']
+        },
+        NodeType.JAVA_ENUM: {
+            'required': ['name', 'type', 'file_path', 'line_number'],
+            'optional': ['package_name', 'full_name', 'modifiers', 'implements_interfaces', 'constants_count', 'methods_count']
+        },
+        NodeType.JAVA_ENUM_CONSTANT: {
+            'required': ['name', 'type', 'file_path', 'line_number'],
+            'optional': ['arguments', 'ordinal']
+        },
+        
+        # Dart nodes
+        NodeType.DART_CLASS: {
+            'required': ['name', 'type', 'file_path', 'line_number'],
+            'optional': ['package_name', 'full_name', 'modifiers', 'is_abstract', 'is_final', 'is_static', 
+                        'extends_class', 'implements_interfaces', 'methods_count', 'fields_count', 'constructors_count']
+        },
+        NodeType.DART_MIXIN: {
+            'required': ['name', 'type', 'file_path', 'line_number'],
+            'optional': ['package_name', 'full_name', 'extends_interfaces', 'methods_count']
+        },
+        NodeType.DART_EXTENSION: {
+            'required': ['name', 'type', 'file_path', 'line_number'],
+            'optional': ['extends_class', 'implements_interfaces', 'methods_count']
+        },
+        NodeType.DART_FUNCTION: {
+            'required': ['name', 'type', 'file_path', 'line_number'],
+            'optional': ['return_type', 'parameters_count', 'complexity', 'is_async', 'is_generator']
+        },
+        NodeType.DART_METHOD: {
+            'required': ['name', 'type', 'file_path', 'line_number'],
+            'optional': ['return_type', 'parameters_count', 'complexity', 'is_async', 'is_static', 'is_class_method', 'is_property']
+        },
+        NodeType.DART_GETTER: {
+            'required': ['name', 'type', 'file_path', 'line_number'],
+            'optional': ['return_type']
+        },
+        NodeType.DART_SETTER: {
+            'required': ['name', 'type', 'file_path', 'line_number'],
+            'optional': ['param_type']
+        },
+        NodeType.DART_CONSTRUCTOR: {
+            'required': ['name', 'type', 'file_path', 'line_number'],
+            'optional': ['parameters']
+        },
+        NodeType.DART_FIELD: {
+            'required': ['name', 'type', 'file_path', 'line_number'],
+            'optional': ['field_type', 'modifiers', 'is_static', 'is_final', 'is_volatile', 'is_transient', 'initial_value']
+        },
+        NodeType.DART_VARIABLE: {
+            'required': ['name', 'type', 'file_path', 'line_number'],
+            'optional': ['value_type']
+        },
+        NodeType.DART_PARAMETER: {
+            'required': ['name', 'type', 'file_path', 'line_number'],
+            'optional': ['param_type', 'default_value', 'is_keyword_only', 'is_positional_only']
+        },
+        NodeType.DART_IMPORT: {
+            'required': ['name', 'type', 'file_path', 'line_number'],
+            'optional': ['module_name', 'imported_name', 'alias', 'is_from_import']
+        },
+        NodeType.DART_EXPORT: {
+            'required': ['name', 'type', 'file_path', 'line_number'],
+            'optional': ['full_name']
+        },
+        NodeType.DART_PART: {
+            'required': ['name', 'type', 'file_path', 'line_number'],
+            'optional': ['package_name', 'full_name']
+        },
+        NodeType.DART_LIBRARY: {
+            'required': ['name', 'type', 'file_path', 'line_number'],
+            'optional': ['full_name']
+        },
+        NodeType.DART_ENUM: {
+            'required': ['name', 'type', 'file_path', 'line_number'],
+            'optional': ['package_name', 'full_name', 'modifiers', 'implements_interfaces', 'constants_count', 'methods_count']
+        },
+        NodeType.DART_ENUM_VALUE: {
+            'required': ['name', 'type', 'file_path', 'line_number'],
+            'optional': ['arguments', 'ordinal']
+        },
+        NodeType.DART_TYPEDEF: {
+            'required': ['name', 'type', 'file_path', 'line_number'],
+            'optional': ['full_name']
         }
     }
     
     # Relationships hợp lệ giữa các loại nodes
     VALID_RELATIONSHIPS = {
-        RelationshipType.IMPORTS: [(NodeType.MODULE, NodeType.MODULE), (NodeType.FILE, NodeType.MODULE)],
-        RelationshipType.CALLS: [(NodeType.FUNCTION, NodeType.FUNCTION), (NodeType.METHOD, NodeType.FUNCTION), (NodeType.METHOD, NodeType.METHOD)],
+        # Common relationships
+        RelationshipType.IMPORTS: [
+            (NodeType.MODULE, NodeType.MODULE), (NodeType.FILE, NodeType.MODULE),
+            (NodeType.JAVA_PACKAGE, NodeType.JAVA_PACKAGE), (NodeType.FILE, NodeType.JAVA_PACKAGE)
+        ],
+        RelationshipType.CALLS: [
+            (NodeType.FUNCTION, NodeType.FUNCTION), (NodeType.METHOD, NodeType.FUNCTION), (NodeType.METHOD, NodeType.METHOD),
+            (NodeType.JAVA_METHOD, NodeType.JAVA_METHOD), (NodeType.JAVA_CONSTRUCTOR, NodeType.JAVA_METHOD)
+        ],
+        RelationshipType.CONTAINS: [
+            (NodeType.FILE, NodeType.MODULE), (NodeType.MODULE, NodeType.CLASS), (NodeType.MODULE, NodeType.FUNCTION),
+            (NodeType.FILE, NodeType.JAVA_PACKAGE), (NodeType.JAVA_PACKAGE, NodeType.JAVA_CLASS), 
+            (NodeType.JAVA_PACKAGE, NodeType.JAVA_INTERFACE), (NodeType.JAVA_PACKAGE, NodeType.JAVA_ENUM)
+        ],
+        RelationshipType.BELONGS_TO: [
+            (NodeType.CLASS, NodeType.MODULE), (NodeType.FUNCTION, NodeType.MODULE), (NodeType.METHOD, NodeType.CLASS),
+            (NodeType.JAVA_CLASS, NodeType.JAVA_PACKAGE), (NodeType.JAVA_INTERFACE, NodeType.JAVA_PACKAGE),
+            (NodeType.JAVA_ENUM, NodeType.JAVA_PACKAGE)
+        ],
+        
+        # Python relationships
         RelationshipType.DEFINES_CLASS: [(NodeType.MODULE, NodeType.CLASS), (NodeType.FILE, NodeType.CLASS)],
         RelationshipType.DEFINES_FUNCTION: [(NodeType.MODULE, NodeType.FUNCTION), (NodeType.FILE, NodeType.FUNCTION)],
         RelationshipType.DEFINES_METHOD: [(NodeType.CLASS, NodeType.METHOD)],
@@ -128,10 +356,45 @@ class CKGSchema:
         RelationshipType.HAS_PARAMETER: [(NodeType.FUNCTION, NodeType.PARAMETER), (NodeType.METHOD, NodeType.PARAMETER)],
         RelationshipType.INHERITS_FROM: [(NodeType.CLASS, NodeType.CLASS)],
         RelationshipType.DECORATED_BY: [(NodeType.FUNCTION, NodeType.DECORATOR), (NodeType.METHOD, NodeType.DECORATOR), (NodeType.CLASS, NodeType.DECORATOR)],
-        RelationshipType.CONTAINS: [(NodeType.FILE, NodeType.MODULE), (NodeType.MODULE, NodeType.CLASS), (NodeType.MODULE, NodeType.FUNCTION)],
-        RelationshipType.BELONGS_TO: [(NodeType.CLASS, NodeType.MODULE), (NodeType.FUNCTION, NodeType.MODULE), (NodeType.METHOD, NodeType.CLASS)],
         RelationshipType.ASSIGNS_TO: [(NodeType.FUNCTION, NodeType.VARIABLE), (NodeType.METHOD, NodeType.VARIABLE)],
-        RelationshipType.ACCESSES: [(NodeType.FUNCTION, NodeType.VARIABLE), (NodeType.METHOD, NodeType.VARIABLE)]
+        RelationshipType.ACCESSES: [(NodeType.FUNCTION, NodeType.VARIABLE), (NodeType.METHOD, NodeType.VARIABLE)],
+        
+        # Java relationships
+        RelationshipType.DEFINES_JAVA_CLASS: [(NodeType.JAVA_PACKAGE, NodeType.JAVA_CLASS), (NodeType.FILE, NodeType.JAVA_CLASS)],
+        RelationshipType.DEFINES_JAVA_INTERFACE: [(NodeType.JAVA_PACKAGE, NodeType.JAVA_INTERFACE), (NodeType.FILE, NodeType.JAVA_INTERFACE)],
+        RelationshipType.DEFINES_JAVA_METHOD: [(NodeType.JAVA_CLASS, NodeType.JAVA_METHOD), (NodeType.JAVA_INTERFACE, NodeType.JAVA_METHOD), (NodeType.JAVA_ENUM, NodeType.JAVA_METHOD)],
+        RelationshipType.DEFINES_JAVA_FIELD: [(NodeType.JAVA_CLASS, NodeType.JAVA_FIELD), (NodeType.JAVA_INTERFACE, NodeType.JAVA_FIELD), (NodeType.JAVA_ENUM, NodeType.JAVA_FIELD)],
+        RelationshipType.DEFINES_JAVA_CONSTRUCTOR: [(NodeType.JAVA_CLASS, NodeType.JAVA_CONSTRUCTOR), (NodeType.JAVA_ENUM, NodeType.JAVA_CONSTRUCTOR)],
+        RelationshipType.JAVA_EXTENDS: [(NodeType.JAVA_CLASS, NodeType.JAVA_CLASS), (NodeType.JAVA_INTERFACE, NodeType.JAVA_INTERFACE)],
+        RelationshipType.JAVA_IMPLEMENTS: [(NodeType.JAVA_CLASS, NodeType.JAVA_INTERFACE), (NodeType.JAVA_ENUM, NodeType.JAVA_INTERFACE)],
+        RelationshipType.JAVA_ANNOTATED_BY: [(NodeType.JAVA_CLASS, NodeType.JAVA_ANNOTATION), (NodeType.JAVA_METHOD, NodeType.JAVA_ANNOTATION), 
+                                            (NodeType.JAVA_FIELD, NodeType.JAVA_ANNOTATION), (NodeType.JAVA_CONSTRUCTOR, NodeType.JAVA_ANNOTATION)],
+        RelationshipType.JAVA_THROWS: [(NodeType.JAVA_METHOD, NodeType.JAVA_CLASS), (NodeType.JAVA_CONSTRUCTOR, NodeType.JAVA_CLASS)],
+        RelationshipType.JAVA_OVERRIDES: [(NodeType.JAVA_METHOD, NodeType.JAVA_METHOD)],
+        RelationshipType.JAVA_USES_TYPE: [(NodeType.JAVA_METHOD, NodeType.JAVA_CLASS), (NodeType.JAVA_FIELD, NodeType.JAVA_CLASS), 
+                                         (NodeType.JAVA_CONSTRUCTOR, NodeType.JAVA_CLASS)],
+        
+        # Dart relationships
+        RelationshipType.DEFINES_DART_CLASS: [(NodeType.JAVA_PACKAGE, NodeType.DART_CLASS), (NodeType.FILE, NodeType.DART_CLASS)],
+        RelationshipType.DEFINES_DART_MIXIN: [(NodeType.JAVA_PACKAGE, NodeType.DART_MIXIN), (NodeType.FILE, NodeType.DART_MIXIN)],
+        RelationshipType.DEFINES_DART_EXTENSION: [(NodeType.JAVA_PACKAGE, NodeType.DART_EXTENSION), (NodeType.FILE, NodeType.DART_EXTENSION)],
+        RelationshipType.DEFINES_DART_FUNCTION: [(NodeType.DART_CLASS, NodeType.DART_FUNCTION), (NodeType.DART_MIXIN, NodeType.DART_FUNCTION), (NodeType.DART_EXTENSION, NodeType.DART_FUNCTION)],
+        RelationshipType.DEFINES_DART_METHOD: [(NodeType.DART_CLASS, NodeType.DART_METHOD), (NodeType.DART_MIXIN, NodeType.DART_METHOD), (NodeType.DART_EXTENSION, NodeType.DART_METHOD)],
+        RelationshipType.DEFINES_DART_GETTER: [(NodeType.DART_CLASS, NodeType.DART_GETTER), (NodeType.DART_MIXIN, NodeType.DART_GETTER), (NodeType.DART_EXTENSION, NodeType.DART_GETTER)],
+        RelationshipType.DEFINES_DART_SETTER: [(NodeType.DART_CLASS, NodeType.DART_SETTER), (NodeType.DART_MIXIN, NodeType.DART_SETTER), (NodeType.DART_EXTENSION, NodeType.DART_SETTER)],
+        RelationshipType.DEFINES_DART_CONSTRUCTOR: [(NodeType.DART_CLASS, NodeType.DART_CONSTRUCTOR), (NodeType.DART_MIXIN, NodeType.DART_CONSTRUCTOR), (NodeType.DART_EXTENSION, NodeType.DART_CONSTRUCTOR)],
+        RelationshipType.DEFINES_DART_FIELD: [(NodeType.DART_CLASS, NodeType.DART_FIELD), (NodeType.DART_MIXIN, NodeType.DART_FIELD), (NodeType.DART_EXTENSION, NodeType.DART_FIELD)],
+        RelationshipType.DEFINES_DART_VARIABLE: [(NodeType.DART_CLASS, NodeType.DART_VARIABLE), (NodeType.DART_MIXIN, NodeType.DART_VARIABLE), (NodeType.DART_EXTENSION, NodeType.DART_VARIABLE)],
+        RelationshipType.DEFINES_DART_ENUM: [(NodeType.DART_CLASS, NodeType.DART_ENUM), (NodeType.DART_MIXIN, NodeType.DART_ENUM), (NodeType.DART_EXTENSION, NodeType.DART_ENUM)],
+        RelationshipType.DEFINES_DART_TYPEDEF: [(NodeType.DART_CLASS, NodeType.DART_TYPEDEF), (NodeType.DART_MIXIN, NodeType.DART_TYPEDEF), (NodeType.DART_EXTENSION, NodeType.DART_TYPEDEF)],
+        RelationshipType.DART_EXTENDS: [(NodeType.DART_CLASS, NodeType.DART_CLASS), (NodeType.DART_MIXIN, NodeType.DART_CLASS)],
+        RelationshipType.DART_IMPLEMENTS: [(NodeType.DART_CLASS, NodeType.DART_MIXIN), (NodeType.DART_MIXIN, NodeType.DART_MIXIN)],
+        RelationshipType.DART_MIXES_IN: [(NodeType.DART_CLASS, NodeType.DART_MIXIN)],
+        RelationshipType.DART_EXTENDS_TYPE: [(NodeType.DART_CLASS, NodeType.DART_CLASS)],
+        RelationshipType.DART_OVERRIDES: [(NodeType.DART_METHOD, NodeType.DART_METHOD)],
+        RelationshipType.DART_USES_TYPE: [(NodeType.DART_METHOD, NodeType.DART_CLASS)],
+        RelationshipType.DART_EXPORTS: [(NodeType.DART_CLASS, NodeType.DART_EXPORT)],
+        RelationshipType.DART_PARTS: [(NodeType.DART_CLASS, NodeType.DART_PART)]
     }
     
     @classmethod

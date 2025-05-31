@@ -1,0 +1,18 @@
+{
+  "session_id": "ui_session_faac4744-3bfe-4868-b126-fe3fbbb66292",
+  "total_duration": 7.087146997451782,
+  "stages_completed": [
+    "REPOSITORY_ANALYSIS_START",
+    "DATA_ACQUISITION",
+    "LANGUAGE_IDENTIFICATION",
+    "CODE_ANALYSIS",
+    "CKG_OPERATIONS",
+    "LLM_SERVICES",
+    "SYNTHESIS_REPORTING"
+  ],
+  "current_stage": "REPOSITORY_ANALYSIS_END",
+  "repository_url": "https://github.com/dino-nlp/novaguard-ai2",
+  "error_count": 0,
+  "performance_metrics": {},
+  "end_time": "2025-05-31T04:16:35.024215"
+}

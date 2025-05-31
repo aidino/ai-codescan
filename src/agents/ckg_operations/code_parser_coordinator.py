@@ -63,8 +63,27 @@ class CodeParserCoordinatorAgent:
         self.max_file_size_bytes = int(max_file_size_mb * 1024 * 1024)
         self.supported_languages = {
             'Python': self._parse_python_files,
-            # Có thể mở rộng cho các ngôn ngữ khác
+            'Java': self._parse_java_files,
+            'Dart': self._parse_dart_files,
         }
+        
+        # Initialize Java parser
+        try:
+            from .java_parser import JavaParserAgent
+            self.java_parser = JavaParserAgent()
+            logger.info("Java parser initialized successfully")
+        except Exception as e:
+            logger.warning(f"Java parser initialization failed: {e}")
+            self.java_parser = None
+        
+        # Initialize Dart parser
+        try:
+            from .dart_parser import DartParserAgent
+            self.dart_parser = DartParserAgent()
+            logger.info("Dart parser initialized successfully")
+        except Exception as e:
+            logger.warning(f"Dart parser initialization failed: {e}")
+            self.dart_parser = None
         
     def parse_project(self, project_context: ProjectDataContext) -> ParseResult:
         """
@@ -378,3 +397,59 @@ class CodeParserCoordinatorAgent:
         }
         
         return stats 
+
+    def _parse_java_files(self, files: List[Tuple[str, str]]) -> List[ParsedFile]:
+        """
+        Parse danh sách Java files.
+        
+        Args:
+            files: Danh sách (file_path, relative_path)
+            
+        Returns:
+            List[ParsedFile]: Danh sách file đã parse
+        """
+        if not self.java_parser:
+            logger.error("Java parser not available")
+            # Create failed ParsedFile entries
+            parsed_files = []
+            for file_path, relative_path in files:
+                parsed_files.append(ParsedFile(
+                    file_path=file_path,
+                    relative_path=relative_path,
+                    language='Java',
+                    ast_tree=None,
+                    parse_success=False,
+                    error_message="Java parser not available",
+                    lines_count=self._count_file_lines(file_path)
+                ))
+            return parsed_files
+        
+        return self.java_parser.parse_java_files(files) 
+
+    def _parse_dart_files(self, files: List[Tuple[str, str]]) -> List[ParsedFile]:
+        """
+        Parse danh sách Dart files.
+        
+        Args:
+            files: Danh sách (file_path, relative_path)
+            
+        Returns:
+            List[ParsedFile]: Danh sách file đã parse
+        """
+        if not self.dart_parser:
+            logger.error("Dart parser not available")
+            # Create failed ParsedFile entries
+            parsed_files = []
+            for file_path, relative_path in files:
+                parsed_files.append(ParsedFile(
+                    file_path=file_path,
+                    relative_path=relative_path,
+                    language='Dart',
+                    ast_tree=None,
+                    parse_success=False,
+                    error_message="Dart parser not available",
+                    lines_count=self._count_file_lines(file_path)
+                ))
+            return parsed_files
+        
+        return self.dart_parser.parse_dart_files(files) 

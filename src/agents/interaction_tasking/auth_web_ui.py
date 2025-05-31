@@ -45,6 +45,12 @@ from agents.interaction_tasking.dialog_manager import DialogManagerAgent
 from agents.interaction_tasking.task_initiation import TaskInitiationAgent
 from agents.interaction_tasking.presentation import PresentationAgent
 
+# Import PATHandlerAgent
+from agents.interaction_tasking.pat_handler import PATHandlerAgent
+
+from ..core.logging import log_repository_analysis_start, get_debug_logger
+from ..core.logging import log_repository_analysis_end
+
 
 def initialize_auth_system():
     """Initialize authentication system."""
@@ -77,6 +83,10 @@ def initialize_session_state():
     if "session_token" not in st.session_state:
         st.session_state.session_token = None
     
+    # PAT Handler initialization
+    if "pat_handler" not in st.session_state:
+        st.session_state.pat_handler = PATHandlerAgent()
+    
     # Session management state
     if "current_session_id" not in st.session_state:
         st.session_state.current_session_id = None
@@ -95,6 +105,10 @@ def initialize_session_state():
     
     if "selected_history_session" not in st.session_state:
         st.session_state.selected_history_session = None
+    
+    # PAT management state
+    if "stored_pat_hash" not in st.session_state:
+        st.session_state.stored_pat_hash = None
 
 
 def check_authentication():
@@ -835,7 +849,7 @@ def render_new_session_interface():
 
 
 def render_authenticated_repository_interface(options: Dict[str, Any]):
-    """Render repository analysis với user authentication."""
+    """Render repository analysis với enhanced PAT management."""
     st.markdown("### 📦 Repository Analysis")
     
     col1, col2 = st.columns([3, 1])
@@ -851,129 +865,158 @@ def render_authenticated_repository_interface(options: Dict[str, Any]):
         st.markdown("<br>", unsafe_allow_html=True)
         analyze_button = st.button("🔍 Phân tích Repository", type="primary", use_container_width=True)
     
-    # PAT input
-    show_pat = st.checkbox("🔐 Repository riêng tư (cần Personal Access Token)")
-    pat = None
-    if show_pat:
-        pat = st.text_input(
-            "Personal Access Token",
-            type="password",
-            help="Nhập PAT để truy cập repository riêng tư"
-        )
+    # Enhanced PAT Management Section
+    st.markdown("---")
+    st.markdown("#### 🔐 Private Repository Access")
     
-    if analyze_button and repo_url:
-        if show_pat and not pat:
-            st.error("Vui lòng nhập Personal Access Token cho repository riêng tư!")
-        else:
-            process_authenticated_repository_analysis(repo_url, pat, options)
-
-
-def render_authenticated_pr_interface(options: Dict[str, Any]):
-    """Render PR analysis với user authentication."""
-    st.markdown("### 🔄 Pull Request Review")
-    
-    col1, col2 = st.columns([2, 1])
-    
-    with col1:
-        repo_url = st.text_input(
-            "🔗 Repository URL",
-            placeholder="https://github.com/username/repository",
-            help="Repository chứa Pull Request"
-        )
-    
-    with col2:
-        pr_id = st.text_input(
-            "PR ID",
-            placeholder="123",
-            help="ID của Pull Request"
-        )
-    
-    platform = st.selectbox(
-        "Platform",
-        ["GitHub", "GitLab", "BitBucket"],
-        help="Chọn platform Git"
-    )
-    
-    # PAT input
-    show_pat = st.checkbox("🔐 Cần Personal Access Token", key="pr_pat_checkbox")
-    pat = None
-    if show_pat:
-        pat = st.text_input(
-            "Personal Access Token",
-            type="password",
-            help="PAT để truy cập repository",
-            key="pr_pat_input"
-        )
-    
-    if st.button("🔍 Phân tích PR", type="primary", use_container_width=True):
-        if not repo_url or not pr_id:
-            st.error("Vui lòng nhập đầy đủ Repository URL và PR ID!")
-        elif show_pat and not pat:
-            st.error("Vui lòng nhập Personal Access Token!")
-        else:
-            process_authenticated_pr_analysis(repo_url, pr_id, platform, pat, options)
-
-
-def render_authenticated_qna_interface(options: Dict[str, Any]):
-    """Render Q&A interface với user authentication."""
-    st.markdown("### ❓ Code Q&A")
-    
-    # Context repository
-    st.markdown("#### 📦 Context Repository (tuỳ chọn)")
-    col1, col2 = st.columns([3, 1])
-    
-    with col1:
-        context_repo = st.text_input(
-            "Repository URL để làm context",
-            placeholder="https://github.com/username/repository",
-            help="Repository để cung cấp context cho câu hỏi"
-        )
-    
-    with col2:
-        st.markdown("<br>", unsafe_allow_html=True)
-        if st.button("📥 Load Context"):
-            if context_repo:
-                process_authenticated_context_loading(context_repo, options)
-    
-    # Chat interface
-    st.markdown("#### 💬 Chat Interface")
-    
-    # Load existing chat messages from current session
-    if st.session_state.current_session_id:
-        session = st.session_state.session_manager.get_session(
-            st.session_state.current_session_id,
-            st.session_state.current_user.id
-        )
+    # Show stored PATs info
+    stored_pats = st.session_state.pat_handler.get_stored_pat_info()
+    if stored_pats:
+        st.info(f"✅ Có {len(stored_pats)} PAT được lưu trữ trong session này")
         
-        if session and session.chat_messages:
-            for message in session.chat_messages:
-                if message.role == 'user':
-                    st.markdown(f"**🙋 You:** {message.content}")
-                else:
-                    st.markdown(f"**🤖 AI:** {message.content}")
-            st.divider()
+        with st.expander("📋 Xem PATs đã lưu", expanded=False):
+            for i, pat_info in enumerate(stored_pats):
+                col1, col2, col3 = st.columns([2, 2, 1])
+                with col1:
+                    st.text(f"🔹 {pat_info['platform'].title()}")
+                with col2:
+                    st.text(f"👤 {pat_info['username']}")
+                with col3:
+                    st.text(f"🆔 {pat_info['token_hash']}")
     
-    # Chat input
-    user_question = st.text_area(
-        "Đặt câu hỏi về code:",
-        placeholder="Ví dụ: Giải thích function này hoạt động như thế nào?",
-        height=100
+    # PAT input section
+    show_pat = st.checkbox("🔑 Sử dụng Personal Access Token")
+    pat = None
+    pat_hash = None
+    
+    if show_pat:
+        if stored_pats:
+            use_stored = st.radio(
+                "Chọn PAT:",
+                ["Sử dụng PAT đã lưu", "Nhập PAT mới"],
+                horizontal=True
+            )
+            
+            if use_stored == "Sử dụng PAT đã lưu":
+                if len(stored_pats) == 1:
+                    selected_pat = stored_pats[0]
+                    st.success(f"🔗 Sử dụng PAT: {selected_pat['platform'].title()} - {selected_pat['username']}")
+                    pat_hash = st.session_state.pat_handler.stored_pats[next(iter(st.session_state.pat_handler.stored_pats.keys()))].token_hash
+                else:
+                    # Multiple PATs - let user choose
+                    pat_options = [f"{pat['platform'].title()} - {pat['username']} ({pat['token_hash']})" for pat in stored_pats]
+                    selected_option = st.selectbox("Chọn PAT:", pat_options)
+                    if selected_option:
+                        # Extract hash from selection
+                        selected_hash = selected_option.split('(')[-1].rstrip(')')
+                        pat_hash = next((hash for hash, info in st.session_state.pat_handler.stored_pats.items() 
+                                       if info.token_hash.startswith(selected_hash.split('...')[0])), None)
+            else:
+                # New PAT input
+                pat = render_pat_input_section()
+        else:
+            # No stored PATs - show input
+            pat = render_pat_input_section()
+    
+    # Analysis execution
+    if analyze_button and repo_url:
+        # Determine PAT to use
+        final_pat = None
+        if show_pat:
+            if pat_hash:
+                # Use stored PAT
+                final_pat = st.session_state.pat_handler.retrieve_pat(pat_hash)
+                if not final_pat:
+                    st.error("❌ Không thể truy xuất PAT đã lưu!")
+                    return
+            elif pat:
+                # Use newly entered PAT
+                final_pat = pat
+        
+        # Validate requirements
+        if show_pat and not final_pat:
+            st.error("⚠️ Vui lòng nhập hoặc chọn Personal Access Token cho repository riêng tư!")
+        else:
+            process_authenticated_repository_analysis(repo_url, final_pat, options)
+
+
+def render_pat_input_section():
+    """Render PAT input section với validation."""
+    col1, col2 = st.columns([3, 1])
+    
+    with col1:
+        # Platform detection from URL
+        platform = "GitHub"  # Default
+        if "gitlab" in st.session_state.get('repo_url', '').lower():
+            platform = "GitLab"
+        elif "bitbucket" in st.session_state.get('repo_url', '').lower():
+            platform = "BitBucket"
+        
+        platform = st.selectbox(
+            "🏢 Platform:",
+            ["GitHub", "GitLab", "BitBucket"],
+            index=["GitHub", "GitLab", "BitBucket"].index(platform)
+        )
+    
+    with col2:
+        # Help link
+        pat_url = st.session_state.pat_handler.get_platform_pat_url(platform)
+        st.markdown(f"[📚 Tạo PAT]({pat_url})", unsafe_allow_html=True)
+    
+    # Username input
+    username = st.text_input(
+        "👤 Username:",
+        placeholder="your-username",
+        help="Username của bạn trên platform"
     )
     
-    col1, col2 = st.columns([3, 1])
-    with col2:
-        if st.button("💬 Gửi câu hỏi", type="primary", use_container_width=True):
-            if user_question.strip():
-                process_authenticated_qna_question(user_question, context_repo, options)
-            else:
-                st.error("Vui lòng nhập câu hỏi!")
+    # PAT input với validation
+    pat = st.text_input(
+        "🔑 Personal Access Token:",
+        type="password",
+        placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" if platform == "GitHub" else "your-token",
+        help=f"Nhập PAT của {platform} để truy cập repository riêng tư"
+    )
+    
+    # Real-time validation
+    if pat:
+        is_valid = st.session_state.pat_handler.validate_pat_format(platform, pat)
+        if is_valid:
+            st.success("✅ Format PAT hợp lệ")
+            
+            # Option to store PAT
+            col1, col2 = st.columns([3, 1])
+            with col1:
+                store_pat = st.checkbox("💾 Lưu PAT trong session này", help="PAT sẽ được mã hóa và lưu tạm thời")
+            
+            with col2:
+                if store_pat and username and st.button("💾 Lưu", key="store_pat_btn"):
+                    try:
+                        session_id = st.session_state.current_session_id or "temp_session"
+                        token_hash = st.session_state.pat_handler.store_pat(
+                            platform=platform,
+                            username=username,
+                            token=pat,
+                            session_id=session_id
+                        )
+                        st.session_state.stored_pat_hash = token_hash
+                        st.success("💾 PAT đã được lưu an toàn!")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"❌ Lỗi khi lưu PAT: {str(e)}")
+        else:
+            st.error(f"❌ Format PAT không hợp lệ cho {platform}")
+            # Show format hints
+            if platform == "GitHub":
+                st.info("💡 GitHub PAT thường bắt đầu với: ghp_, gho_, ghu_, ghs_, hoặc ghr_")
+            elif platform == "GitLab":
+                st.info("💡 GitLab PAT thường bắt đầu với: glpat-")
+    
+    return pat
 
 
 def process_authenticated_repository_analysis(repo_url: str, pat: Optional[str], options: Dict[str, Any]):
     """Process repository analysis với user session tracking."""
-    # Import debug logging
-    from core.logging import log_repository_analysis_start, get_debug_logger
-    
     # Create session if not exists
     if not st.session_state.current_session_id:
         repo_name = repo_url.split('/')[-1] if '/' in repo_url else repo_url
@@ -1154,7 +1197,6 @@ def process_authenticated_repository_analysis(repo_url: str, pat: Optional[str],
         })
         
         # Finalize debug logging
-        from core.logging import log_repository_analysis_end
         log_repository_analysis_end()
         
         status_text.text("✅ Analysis completed!")
@@ -1164,9 +1206,110 @@ def process_authenticated_repository_analysis(repo_url: str, pat: Optional[str],
         render_analysis_results()
 
 
+def render_authenticated_pr_interface(options: Dict[str, Any]):
+    """Render PR analysis với user authentication."""
+    st.markdown("### 🔄 Pull Request Review")
+    
+    col1, col2 = st.columns([2, 1])
+    
+    with col1:
+        repo_url = st.text_input(
+            "🔗 Repository URL",
+            placeholder="https://github.com/username/repository",
+            help="Repository chứa Pull Request"
+        )
+    
+    with col2:
+        pr_id = st.text_input(
+            "PR ID",
+            placeholder="123",
+            help="ID của Pull Request"
+        )
+    
+    platform = st.selectbox(
+        "Platform",
+        ["GitHub", "GitLab", "BitBucket"],
+        help="Chọn platform Git"
+    )
+    
+    # PAT input
+    show_pat = st.checkbox("🔐 Cần Personal Access Token", key="pr_pat_checkbox")
+    pat = None
+    if show_pat:
+        pat = st.text_input(
+            "Personal Access Token",
+            type="password",
+            help="PAT để truy cập repository",
+            key="pr_pat_input"
+        )
+    
+    if st.button("🔍 Phân tích PR", type="primary", use_container_width=True):
+        if not repo_url or not pr_id:
+            st.error("Vui lòng nhập đầy đủ Repository URL và PR ID!")
+        elif show_pat and not pat:
+            st.error("Vui lòng nhập Personal Access Token!")
+        else:
+            process_authenticated_pr_analysis(repo_url, pr_id, platform, pat, options)
+
+
 def process_authenticated_pr_analysis(repo_url: str, pr_id: str, platform: str, pat: Optional[str], options: Dict[str, Any]):
     """Process PR analysis với user session tracking."""
     st.info("🔄 PR analysis functionality sẽ được implement trong phase 2")
+
+
+def render_authenticated_qna_interface(options: Dict[str, Any]):
+    """Render Q&A interface với user authentication."""
+    st.markdown("### ❓ Code Q&A")
+    
+    # Context repository
+    st.markdown("#### 📦 Context Repository (tuỳ chọn)")
+    col1, col2 = st.columns([3, 1])
+    
+    with col1:
+        context_repo = st.text_input(
+            "Repository URL để làm context",
+            placeholder="https://github.com/username/repository",
+            help="Repository để cung cấp context cho câu hỏi"
+        )
+    
+    with col2:
+        st.markdown("<br>", unsafe_allow_html=True)
+        if st.button("📥 Load Context"):
+            if context_repo:
+                process_authenticated_context_loading(context_repo, options)
+    
+    # Chat interface
+    st.markdown("#### 💬 Chat Interface")
+    
+    # Load existing chat messages from current session
+    if st.session_state.current_session_id:
+        session = st.session_state.session_manager.get_session(
+            st.session_state.current_session_id,
+            st.session_state.current_user.id
+        )
+        
+        if session and session.chat_messages:
+            for message in session.chat_messages:
+                if message.role == 'user':
+                    st.markdown(f"**🙋 You:** {message.content}")
+                else:
+                    st.markdown(f"**🤖 AI:** {message.content}")
+            st.divider()
+    
+    # Chat input
+    user_question = st.text_area(
+        "Đặt câu hỏi về code:",
+        placeholder="Ví dụ: Giải thích function này hoạt động như thế nào?",
+        height=100
+    )
+    
+    col1, col2 = st.columns([3, 1])
+    with col2:
+        if st.button("💬 Gửi câu hỏi", type="primary", use_container_width=True):
+            if user_question.strip():
+                process_authenticated_qna_question(user_question, context_repo, options)
+            else:
+                st.error("Vui lòng nhập câu hỏi!")
 
 
 def process_authenticated_context_loading(context_repo: str, options: Dict[str, Any]):

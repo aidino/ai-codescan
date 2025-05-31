@@ -30,6 +30,12 @@ from .ckg_query_interface import (
     ConnectionConfig
 )
 
+# Java support
+from .java_parser import JavaParserAgent, JavaNode, JavaParseInfo
+
+# Dart support
+from .dart_parser import DartParserAgent, DartNode, DartParseInfo
+
 __all__ = [
     # Schema
     'NodeType',
@@ -50,5 +56,15 @@ __all__ = [
     # Query Interface
     'CKGQueryInterfaceAgent',
     'CKGQueryResult',
-    'ConnectionConfig'
+    'ConnectionConfig',
+    
+    # Java Support
+    'JavaParserAgent',
+    'JavaNode', 
+    'JavaParseInfo',
+    
+    # Dart Support
+    'DartParserAgent',
+    'DartNode',
+    'DartParseInfo'
 ]

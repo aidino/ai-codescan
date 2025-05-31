@@ -495,8 +495,299 @@ class CKGQueryInterfaceAgent:
         logger.info("Query cache đã được xóa")
     
     def get_cache_stats(self) -> Dict[str, Any]:
-        """Lấy thống kê cache."""
+        """
+        Lấy thống kê cache.
+        
+        Returns:
+            Dict[str, Any]: Thống kê cache
+        """
         return {
-            "cache_size": len(self.query_cache),
-            "cached_queries": list(self.query_cache.keys())
-        } 
+            'cache_size': len(self.query_cache),
+            'cached_queries': list(self.query_cache.keys())
+        }
+
+    # === Dart-specific Query Methods ===
+    
+    def get_dart_classes_in_file(self, file_path: str) -> CKGQueryResult:
+        """
+        Lấy tất cả Dart classes trong một file.
+        
+        Args:
+            file_path: Đường dẫn file
+            
+        Returns:
+            CKGQueryResult: Danh sách Dart classes
+        """
+        query = """
+        MATCH (f:File {file_path: $file_path})-[:DEFINES_DART_CLASS]->(cls:DartClass)
+        RETURN cls.name as name, cls.line_number as line_number,
+               cls.package_name as package, cls.is_abstract as is_abstract,
+               cls.extends_class as extends_class, cls.implements_interfaces as implements_interfaces
+        ORDER BY cls.line_number
+        """
+        
+        return self.execute_query(query, {"file_path": file_path})
+    
+    def get_dart_mixins_in_file(self, file_path: str) -> CKGQueryResult:
+        """
+        Lấy tất cả Dart mixins trong một file.
+        
+        Args:
+            file_path: Đường dẫn file
+            
+        Returns:
+            CKGQueryResult: Danh sách Dart mixins
+        """
+        query = """
+        MATCH (f:File {file_path: $file_path})-[:DEFINES_DART_MIXIN]->(mixin:DartMixin)
+        RETURN mixin.name as name, mixin.line_number as line_number,
+               mixin.package_name as package, mixin.extends_interfaces as extends_interfaces
+        ORDER BY mixin.line_number
+        """
+        
+        return self.execute_query(query, {"file_path": file_path})
+    
+    def get_dart_extensions_in_file(self, file_path: str) -> CKGQueryResult:
+        """
+        Lấy tất cả Dart extensions trong một file.
+        
+        Args:
+            file_path: Đường dẫn file
+            
+        Returns:
+            CKGQueryResult: Danh sách Dart extensions
+        """
+        query = """
+        MATCH (f:File {file_path: $file_path})-[:DEFINES_DART_EXTENSION]->(ext:DartExtension)
+        RETURN ext.name as name, ext.line_number as line_number,
+               ext.extends_class as extends_class, ext.implements_interfaces as implements_interfaces
+        ORDER BY ext.line_number
+        """
+        
+        return self.execute_query(query, {"file_path": file_path})
+    
+    def get_dart_functions_in_file(self, file_path: str) -> CKGQueryResult:
+        """
+        Lấy tất cả Dart functions trong một file.
+        
+        Args:
+            file_path: Đường dẫn file
+            
+        Returns:
+            CKGQueryResult: Danh sách Dart functions
+        """
+        query = """
+        MATCH (f:File {file_path: $file_path})-[:DEFINES_DART_FUNCTION]->(func:DartFunction)
+        RETURN func.name as name, func.line_number as line_number,
+               func.return_type as return_type, func.parameters_count as params_count,
+               func.is_async as is_async, func.is_generator as is_generator
+        ORDER BY func.line_number
+        """
+        
+        return self.execute_query(query, {"file_path": file_path})
+    
+    def get_dart_enums_in_file(self, file_path: str) -> CKGQueryResult:
+        """
+        Lấy tất cả Dart enums trong một file.
+        
+        Args:
+            file_path: Đường dẫn file
+            
+        Returns:
+            CKGQueryResult: Danh sách Dart enums
+        """
+        query = """
+        MATCH (f:File {file_path: $file_path})-[:DEFINES_DART_ENUM]->(enum:DartEnum)
+        RETURN enum.name as name, enum.line_number as line_number,
+               enum.package_name as package, enum.constants_count as constants_count
+        ORDER BY enum.line_number
+        """
+        
+        return self.execute_query(query, {"file_path": file_path})
+    
+    def get_dart_imports_in_file(self, file_path: str) -> CKGQueryResult:
+        """
+        Lấy tất cả Dart imports trong một file.
+        
+        Args:
+            file_path: Đường dẫn file
+            
+        Returns:
+            CKGQueryResult: Danh sách Dart imports
+        """
+        query = """
+        MATCH (f:File {file_path: $file_path})-[:IMPORTS]->(imp:DartImport)
+        RETURN imp.name as name, imp.line_number as line_number,
+               imp.imported_name as imported_name, imp.is_package_import as is_package_import,
+               imp.is_relative_import as is_relative_import
+        ORDER BY imp.line_number
+        """
+        
+        return self.execute_query(query, {"file_path": file_path})
+    
+    def get_dart_exports_in_file(self, file_path: str) -> CKGQueryResult:
+        """
+        Lấy tất cả Dart exports trong một file.
+        
+        Args:
+            file_path: Đường dẫn file
+            
+        Returns:
+            CKGQueryResult: Danh sách Dart exports
+        """
+        query = """
+        MATCH (f:File {file_path: $file_path})-[:DART_EXPORTS]->(exp:DartExport)
+        RETURN exp.name as name, exp.line_number as line_number,
+               exp.full_name as full_name
+        ORDER BY exp.line_number
+        """
+        
+        return self.execute_query(query, {"file_path": file_path})
+    
+    def get_dart_library_info(self, file_path: str) -> CKGQueryResult:
+        """
+        Lấy thông tin Dart library trong một file.
+        
+        Args:
+            file_path: Đường dẫn file
+            
+        Returns:
+            CKGQueryResult: Thông tin Dart library
+        """
+        query = """
+        MATCH (f:File {file_path: $file_path})-[:CONTAINS]->(lib:DartLibrary)
+        RETURN lib.name as name, lib.line_number as line_number,
+               lib.full_name as full_name
+        """
+        
+        return self.execute_query(query, {"file_path": file_path})
+    
+    def find_dart_class_hierarchy(self, class_name: str) -> CKGQueryResult:
+        """
+        Tìm hierarchy của Dart class (extends, implements, mixins).
+        
+        Args:
+            class_name: Tên class
+            
+        Returns:
+            CKGQueryResult: Class hierarchy information
+        """
+        query = """
+        MATCH (cls:DartClass {name: $class_name})
+        OPTIONAL MATCH (cls)-[:DART_EXTENDS]->(parent:DartClass)
+        OPTIONAL MATCH (cls)-[:DART_IMPLEMENTS]->(interface:DartInterface)
+        OPTIONAL MATCH (cls)-[:DART_MIXES_IN]->(mixin:DartMixin)
+        RETURN cls.name as class_name,
+               collect(DISTINCT parent.name) as extends_classes,
+               collect(DISTINCT interface.name) as implements_interfaces,
+               collect(DISTINCT mixin.name) as mixes_in_mixins
+        """
+        
+        return self.execute_query(query, {"class_name": class_name})
+    
+    def get_dart_project_statistics(self) -> CKGQueryResult:
+        """
+        Lấy thống kê tổng quan về Dart project.
+        
+        Returns:
+            CKGQueryResult: Thống kê Dart project
+        """
+        query = """
+        RETURN 
+            COUNT(DISTINCT n) FILTER (WHERE n:DartClass) as dart_classes_count,
+            COUNT(DISTINCT n) FILTER (WHERE n:DartMixin) as dart_mixins_count,
+            COUNT(DISTINCT n) FILTER (WHERE n:DartExtension) as dart_extensions_count,
+            COUNT(DISTINCT n) FILTER (WHERE n:DartFunction) as dart_functions_count,
+            COUNT(DISTINCT n) FILTER (WHERE n:DartEnum) as dart_enums_count,
+            COUNT(DISTINCT n) FILTER (WHERE n:DartImport) as dart_imports_count,
+            COUNT(DISTINCT n) FILTER (WHERE n:DartExport) as dart_exports_count,
+            COUNT(DISTINCT n) FILTER (WHERE n:DartLibrary) as dart_libraries_count
+        """
+        
+        return self.execute_query(query)
+    
+    def search_dart_elements_by_name(self, name_pattern: str, element_types: Optional[List[str]] = None) -> CKGQueryResult:
+        """
+        Tìm kiếm Dart elements theo tên.
+        
+        Args:
+            name_pattern: Pattern tìm kiếm (regex)
+            element_types: Loại elements cần tìm (DartClass, DartMixin, DartFunction, etc.)
+            
+        Returns:
+            CKGQueryResult: Kết quả tìm kiếm
+        """
+        # Default Dart element types
+        if element_types is None:
+            element_types = ['DartClass', 'DartMixin', 'DartExtension', 'DartFunction', 'DartEnum']
+        
+        # Build dynamic query based on element types
+        type_conditions = []
+        for element_type in element_types:
+            type_conditions.append(f"n:{element_type}")
+        
+        type_filter = " OR ".join(type_conditions)
+        
+        query = f"""
+        MATCH (n)
+        WHERE ({type_filter}) AND n.name =~ $pattern
+        RETURN n.name as name, labels(n)[0] as type, n.file_path as file_path,
+               n.line_number as line_number
+        ORDER BY n.name
+        LIMIT 50
+        """
+        
+        return self.execute_query(query, {"pattern": f".*{name_pattern}.*"})
+    
+    def find_dart_unused_exports(self, file_path: Optional[str] = None) -> CKGQueryResult:
+        """
+        Tìm Dart exports không được sử dụng.
+        
+        Args:
+            file_path: File path để tìm kiếm (optional)
+            
+        Returns:
+            CKGQueryResult: Danh sách exports không được sử dụng
+        """
+        if file_path:
+            query = """
+            MATCH (f:File {file_path: $file_path})-[:DART_EXPORTS]->(exp:DartExport)
+            WHERE NOT EXISTS {
+                MATCH (other_file:File)-[:IMPORTS]->(imp:DartImport)
+                WHERE imp.imported_name CONTAINS exp.name
+            }
+            RETURN exp.name as export_name, exp.file_path as file_path,
+                   exp.line_number as line_number
+            ORDER BY exp.name
+            """
+            return self.execute_query(query, {"file_path": file_path})
+        else:
+            query = """
+            MATCH (exp:DartExport)
+            WHERE NOT EXISTS {
+                MATCH (other_file:File)-[:IMPORTS]->(imp:DartImport)
+                WHERE imp.imported_name CONTAINS exp.name
+            }
+            RETURN exp.name as export_name, exp.file_path as file_path,
+                   exp.line_number as line_number
+            ORDER BY exp.file_path, exp.name
+            """
+            return self.execute_query(query)
+    
+    def find_dart_circular_imports(self) -> CKGQueryResult:
+        """
+        Tìm circular imports trong Dart code.
+        
+        Returns:
+            CKGQueryResult: Danh sách circular imports
+        """
+        query = """
+        MATCH path = (f1:File)-[:IMPORTS*2..10]->(f1)
+        WHERE ALL(rel in relationships(path) WHERE type(rel) = 'IMPORTS')
+        RETURN [node in nodes(path) | node.file_path] as circular_path,
+               length(path) as path_length
+        ORDER BY path_length
+        LIMIT 20
+        """
+        
+        return self.execute_query(query) 

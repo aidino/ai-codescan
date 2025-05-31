@@ -18,7 +18,15 @@ import git
 from git import Repo, GitCommandError
 
 # Import debug logging
-from core.logging import debug_trace, get_debug_logger
+try:
+    from src.core.logging import debug_trace, get_debug_logger
+except ImportError:
+    # Fallback for testing environment
+    def debug_trace(message):
+        pass
+    def get_debug_logger():
+        from loguru import logger
+        return logger
 
 
 @dataclass
