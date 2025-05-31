@@ -32,13 +32,40 @@ class CKGBuildResult:
 
 class ASTtoCKGBuilderAgent:
     """
-    Agent xây dựng Code Knowledge Graph từ AST.
-    
-    Trách nhiệm:
-    - Duyệt qua các ASTs từ CodeParserCoordinatorAgent
-    - Trích xuất entities và relationships theo CKG schema
-    - Tạo Cypher queries để lưu vào Neo4j
-    - Quản lý việc thực thi queries và báo cáo trạng thái
+    AST to Code Knowledge Graph Builder Agent.
+
+    Agent chuyển đổi Abstract Syntax Trees (AST) thành Code Knowledge Graph (CKG)
+    bằng cách tạo các Cypher queries để build graph structure trong Neo4j database.
+
+    Supports:
+        - Python AST parsing và conversion
+        - Node creation cho files, modules, classes, functions, methods
+        - Relationship creation cho imports, calls, inheritance, containment
+        - Property extraction từ AST nodes
+        - Bulk operations cho performance optimization
+
+    Args:
+        neo4j_uri (str): Neo4j database connection URI.
+        neo4j_user (str): Neo4j database username.
+        neo4j_password (str): Neo4j database password.
+
+    Attributes:
+        schema (CKGSchema): Schema definition cho graph structure.
+        driver: Neo4j database driver instance.
+        created_nodes (Dict[str, NodeProperties]): Cache của created nodes.
+        
+    Example:
+        >>> builder = ASTtoCKGBuilderAgent(
+        ...     neo4j_uri="bolt://localhost:7687",
+        ...     neo4j_user="neo4j",
+        ...     neo4j_password="password"
+        ... )
+        >>> result = builder.build_ckg_from_parse_result(parse_result)
+        >>> print(f"Created {result.total_nodes} nodes, {result.total_relationships} relationships")
+        
+    Note:
+        Requires Neo4j database to be running và accessible.
+        Uses CKGSchema để ensure consistent graph structure.
     """
     
     def __init__(self, neo4j_connection=None):

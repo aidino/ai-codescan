@@ -1,11 +1,10 @@
 """
-Core module for AI CodeScan.
+Core Logging Module for AI CodeScan.
 
-Contains orchestrator, authentication, và logging components.
+Provides debug logging và tracing capabilities cho repository analysis workflow.
 """
 
-# Import logging utilities
-from .logging import (
+from .debug_logger import (
     DebugLogger,
     debug_trace,
     get_debug_logger,
@@ -16,7 +15,6 @@ from .logging import (
 )
 
 __all__ = [
-    # Logging utilities
     "DebugLogger",
     "debug_trace", 
     "get_debug_logger",
@@ -24,4 +22,4 @@ __all__ = [
     "create_session_debug_logger",
     "log_repository_analysis_start",
     "log_repository_analysis_end"
-]
+] 

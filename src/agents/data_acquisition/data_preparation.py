@@ -32,7 +32,19 @@ class FileInfo:
 
 @dataclass
 class DirectoryStructure:
-    """Project directory structure information."""
+    """
+    Project directory structure information.
+    
+    Contains comprehensive statistics about project directory layout,
+    file organization, và structural patterns.
+    
+    Attributes:
+        total_directories (int): Total number of directories in project.
+        total_files (int): Total number of files in project.
+        max_depth (int): Maximum depth of directory nesting.
+        common_directories (List[str]): Common directory names found (src, tests, docs, etc.).
+        ignored_directories (List[str]): Directories ignored during analysis (.git, __pycache__, etc.).
+    """
     total_directories: int
     total_files: int
     max_depth: int
@@ -42,7 +54,29 @@ class DirectoryStructure:
 
 @dataclass
 class ProjectMetadata:
-    """Project metadata extracted from configuration files."""
+    """
+    Project metadata extracted from configuration files.
+    
+    Aggregates metadata từ various project configuration files như
+    pyproject.toml, setup.py, package.json, requirements.txt, etc.
+    
+    Attributes:
+        name (str): Project name.
+        version (Optional[str]): Project version string.
+        description (Optional[str]): Project description.
+        author (Optional[str]): Project author information.
+        license (Optional[str]): Project license identifier.
+        dependencies (Dict[str, List[str]]): Dependencies by category (dev, prod, test).
+        scripts (Dict[str, str]): Available scripts and commands.
+        keywords (List[str]): Project keywords and tags.
+        
+    Example:
+        >>> metadata = ProjectMetadata(
+        ...     name="my-project",
+        ...     version="1.0.0",
+        ...     dependencies={"prod": ["requests", "click"], "dev": ["pytest"]}
+        ... )
+    """
     name: str
     version: Optional[str] = None
     description: Optional[str] = None

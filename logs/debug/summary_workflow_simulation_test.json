@@ -1,0 +1,34 @@
+{
+  "session_id": "workflow_simulation_test",
+  "total_duration": 2.8590948581695557,
+  "stages_completed": [
+    "REPOSITORY_ANALYSIS_START",
+    "DATA_ACQUISITION",
+    "LANGUAGE_IDENTIFICATION",
+    "CODE_ANALYSIS",
+    "CKG_OPERATIONS",
+    "LLM_SERVICES",
+    "SYNTHESIS_REPORTING"
+  ],
+  "current_stage": "REPOSITORY_ANALYSIS_END",
+  "repository_url": "https://github.com/example/test-repo",
+  "error_count": 0,
+  "performance_metrics": {
+    "total_analysis_duration": {
+      "value": 2.8,
+      "unit": "seconds",
+      "timestamp": "2025-05-31T10:05:38.675975"
+    },
+    "files_per_second": {
+      "value": 12.5,
+      "unit": "files/sec",
+      "timestamp": "2025-05-31T10:05:38.677236"
+    },
+    "issues_found_rate": {
+      "value": 1.3428571428571427,
+      "unit": "issues/file",
+      "timestamp": "2025-05-31T10:05:38.677500"
+    }
+  },
+  "end_time": "2025-05-31T10:05:38.678192"
+}

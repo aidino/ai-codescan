@@ -778,8 +778,6 @@ def render_dashboard():
 
 def render_new_session_interface():
     """Render interface for creating new session."""
-    from agents.interaction_tasking.web_ui import render_new_session_interface as render_original
-    
     # Create temporary options dict
     options = {}
     
@@ -973,6 +971,9 @@ def render_authenticated_qna_interface(options: Dict[str, Any]):
 
 def process_authenticated_repository_analysis(repo_url: str, pat: Optional[str], options: Dict[str, Any]):
     """Process repository analysis với user session tracking."""
+    # Import debug logging
+    from core.logging import log_repository_analysis_start, get_debug_logger
+    
     # Create session if not exists
     if not st.session_state.current_session_id:
         repo_name = repo_url.split('/')[-1] if '/' in repo_url else repo_url
@@ -985,28 +986,118 @@ def process_authenticated_repository_analysis(repo_url: str, pat: Optional[str],
         )
         st.session_state.current_session_id = session_id
     
+    # Initialize debug logging cho session
+    debug_logger = log_repository_analysis_start(
+        repo_url, 
+        session_id=f"ui_session_{st.session_state.current_session_id}"
+    )
+    
+    # Log UI context
+    debug_logger.log_step("Repository analysis started from Web UI", {
+        "user_id": st.session_state.current_user.id,
+        "username": st.session_state.current_user.username,
+        "session_id": st.session_state.current_session_id,
+        "repo_url": repo_url,
+        "has_pat": bool(pat),
+        "options": options
+    })
+    
     st.session_state.analysis_in_progress = True
     
     with st.spinner("🔄 Đang phân tích repository..."):
-        # Simulate analysis
+        # Simulate analysis with detailed logging
         progress_bar = st.progress(0)
         status_text = st.empty()
         
         steps = [
-            "Cloning repository...",
-            "Analyzing code structure...",
-            "Running static analysis...",
-            "Building knowledge graph...",
-            "Generating insights...",
-            "Preparing results..."
+            ("Cloning repository...", "DATA_ACQUISITION"),
+            ("Analyzing code structure...", "LANGUAGE_IDENTIFICATION"),
+            ("Running static analysis...", "CODE_ANALYSIS"),
+            ("Building knowledge graph...", "CKG_OPERATIONS"),
+            ("Generating insights...", "LLM_SERVICES"),
+            ("Preparing results...", "SYNTHESIS_REPORTING")
         ]
         
-        for i, step in enumerate(steps):
-            status_text.text(f"📋 {step}")
+        for i, (step_desc, stage) in enumerate(steps):
+            # Set analysis stage
+            debug_logger.set_analysis_stage(stage)
+            
+            status_text.text(f"📋 {step_desc}")
             progress_bar.progress((i + 1) / len(steps))
-            time.sleep(1)  # Simulate work
+            
+            # Log step progression
+            debug_logger.log_step(step_desc, {
+                "stage": stage,
+                "progress_percent": ((i + 1) / len(steps)) * 100,
+                "step_number": i + 1,
+                "total_steps": len(steps)
+            })
+            
+            # Simulate different processing times for different stages
+            if stage == "DATA_ACQUISITION":
+                # Simulate repository cloning
+                debug_logger.log_step("Simulating git clone operation", {
+                    "repo_url": repo_url,
+                    "depth": 1,
+                    "estimated_duration": "2-5 seconds"
+                })
+                import time
+                time.sleep(2)  # Simulate longer clone time
+                
+                # Log mock clone results
+                debug_logger.log_data("mock_clone_result", {
+                    "status": "success",
+                    "local_path": f"/tmp/ai_codescan_repos/{repo_url.split('/')[-1]}",
+                    "size_mb": 1.5,
+                    "file_count": 23
+                })
+                
+            elif stage == "LANGUAGE_IDENTIFICATION":
+                # Simulate language detection
+                debug_logger.log_step("Simulating language identification", {
+                    "detected_languages": ["Python", "JavaScript"],
+                    "primary_language": "Python",
+                    "confidence": 0.95
+                })
+                time.sleep(1)
+                
+            elif stage == "CODE_ANALYSIS":
+                # Simulate static analysis
+                debug_logger.log_step("Simulating static analysis tools", {
+                    "tools": ["flake8", "pylint", "mypy"],
+                    "files_analyzed": 15,
+                    "issues_found": 42
+                })
+                time.sleep(1.5)
+                
+            elif stage == "CKG_OPERATIONS":
+                # Simulate CKG building
+                debug_logger.log_step("Simulating CKG construction", {
+                    "nodes_created": 158,
+                    "relationships_created": 234,
+                    "node_types": ["File", "Function", "Class", "Import"]
+                })
+                time.sleep(1)
+                
+            elif stage == "LLM_SERVICES":
+                # Simulate LLM processing
+                debug_logger.log_step("Simulating LLM insights generation", {
+                    "model": "gpt-4-turbo",
+                    "tokens_processed": 1250,
+                    "insights_generated": 8
+                })
+                time.sleep(1)
+                
+            elif stage == "SYNTHESIS_REPORTING":
+                # Simulate report generation
+                debug_logger.log_step("Simulating report synthesis", {
+                    "report_sections": ["overview", "issues", "recommendations"],
+                    "export_formats": ["json", "html", "pdf"]
+                })
+                time.sleep(0.5)
         
-        # Simulate results
+        # Simulate results generation
+        repo_name = repo_url.split('/')[-1] if '/' in repo_url else repo_url
         fake_results = {
             'total_issues': 42,
             'files_analyzed': 15,
@@ -1026,6 +1117,9 @@ def process_authenticated_repository_analysis(repo_url: str, pat: Optional[str],
             },
             'summary': f"Repository {repo_name} has been analyzed successfully. Found 42 issues across 15 files."
         }
+        
+        # Log final results
+        debug_logger.log_data("analysis_results", fake_results)
         
         st.session_state.analysis_results = fake_results
         st.session_state.analysis_in_progress = False
@@ -1050,6 +1144,18 @@ def process_authenticated_repository_analysis(repo_url: str, pat: Optional[str],
             st.session_state.current_user.id,
             scan_result
         )
+        
+        # Log session completion
+        debug_logger.log_step("Analysis session completed", {
+            "session_id": st.session_state.current_session_id,
+            "total_issues": fake_results['total_issues'],
+            "quality_score": fake_results['quality_score'],
+            "files_analyzed": fake_results['files_analyzed']
+        })
+        
+        # Finalize debug logging
+        from core.logging import log_repository_analysis_end
+        log_repository_analysis_end()
         
         status_text.text("✅ Analysis completed!")
         st.success("🎉 Repository analysis completed successfully!")
