@@ -28,6 +28,14 @@ from .architectural_analyzer import (
     IssueType
 )
 
+from .llm_analysis_support import (
+    LLMAnalysisSupportAgent,
+    CodeExplanationRequest,
+    PRSummaryRequest,
+    QARequest,
+    create_llm_analysis_support_agent
+)
+
 __all__ = [
     # Static Analysis
     'StaticAnalysisIntegratorAgent',
@@ -47,5 +55,12 @@ __all__ = [
     'ArchitecturalAnalysisResult',
     'CircularDependency',
     'UnusedElement',
-    'IssueType'
+    'IssueType',
+    
+    # LLM Analysis Support
+    'LLMAnalysisSupportAgent',
+    'CodeExplanationRequest',
+    'PRSummaryRequest', 
+    'QARequest',
+    'create_llm_analysis_support_agent'
 ]
