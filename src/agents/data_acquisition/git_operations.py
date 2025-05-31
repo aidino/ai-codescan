@@ -22,11 +22,28 @@ try:
     from src.core.logging import debug_trace, get_debug_logger
 except ImportError:
     # Fallback for testing environment
-    def debug_trace(message):
-        pass
+    def debug_trace(func):
+        return func
+    
+    class MockDebugLogger:
+        def __init__(self):
+            from loguru import logger
+            self.logger = logger
+            
+        def log_step(self, message, data=None):
+            self.logger.info(f"{message}: {data}")
+            
+        def log_error(self, error, data=None):
+            self.logger.error(f"Error: {error} - {data}")
+            
+        def log_performance_metric(self, metric, value, unit):
+            self.logger.info(f"Performance: {metric}={value}{unit}")
+            
+        def log_data(self, stage, data):
+            self.logger.info(f"Data [{stage}]: {data}")
+    
     def get_debug_logger():
-        from loguru import logger
-        return logger
+        return MockDebugLogger()
 
 
 @dataclass
@@ -66,7 +83,7 @@ class GitOperationsAgent:
             "base_clone_dir": str(self.base_clone_dir)
         })
         
-    @debug_trace(stage="DATA_ACQUISITION")
+    @debug_trace
     def clone_repository(
         self, 
         repo_url: str, 
@@ -191,7 +208,7 @@ class GitOperationsAgent:
                 shutil.rmtree(local_path)
             raise
     
-    @debug_trace(stage="DATA_ACQUISITION")
+    @debug_trace
     def get_repository_info(self, local_path: str) -> RepositoryInfo:
         """
         Get information about an existing local repository.
@@ -230,7 +247,7 @@ class GitOperationsAgent:
             self._debug_logger.log_error(e, {"local_path": local_path, "operation": "get_repository_info"})
             raise
     
-    @debug_trace(stage="DATA_ACQUISITION")
+    @debug_trace
     def cleanup_repository(self, local_path: str) -> bool:
         """
         Clean up cloned repository.
