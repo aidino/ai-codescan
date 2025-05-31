@@ -46,6 +46,10 @@ class CKGBuildResult:
     build_stats: Dict[str, Any]
 
 
+# Alias for backward compatibility with tests
+BuildResult = CKGBuildResult
+
+
 class ASTtoCKGBuilderAgent:
     """
     AST to Code Knowledge Graph Builder Agent.

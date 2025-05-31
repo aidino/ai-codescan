@@ -25,6 +25,16 @@ class ContextualFinding:
 
 
 @dataclass
+class ImpactScore:
+    """Score đánh giá tác động của finding."""
+    severity_score: float
+    complexity_score: float
+    usage_score: float
+    total_score: float
+    explanation: str
+
+
+@dataclass
 class ContextualAnalysisResult:
     """Kết quả phân tích contextual."""
     project_path: str

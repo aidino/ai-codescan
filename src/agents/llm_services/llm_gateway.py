@@ -18,12 +18,27 @@ from .llm_provider_abstraction import (
     LLMRequest, 
     LLMResponse, 
     LLMMessage,
-    LLMModel,
-    create_system_message,
-    create_user_message,
-    create_assistant_message,
-    create_provider
+    LLMModel
 )
+
+
+@dataclass
+class LLMServiceRequest:
+    """Service request với metadata."""
+    task_type: str
+    messages: List[LLMMessage]
+    model: LLMModel
+    parameters: Dict[str, Any]
+
+
+@dataclass
+class LLMServiceResponse:
+    """Service response với metadata."""
+    task_type: str
+    content: str
+    success: bool
+    llm_response: Optional[LLMResponse] = None
+    error_message: Optional[str] = None
 
 
 @dataclass
@@ -79,13 +94,15 @@ class LLMGatewayAgent:
     def _create_default_provider(self) -> LLMProvider:
         """Tạo default provider based on available config."""
         # Try OpenAI first
-        try:
-            openai_provider = OpenAIProvider()
-            if openai_provider.is_available():
-                logger.info("Using OpenAI as default provider")
-                return openai_provider
-        except Exception as e:
-            logger.debug(f"Cannot use OpenAI provider: {str(e)}")
+        openai_key = os.getenv("OPENAI_API_KEY")
+        if openai_key:
+            try:
+                openai_provider = OpenAIProvider(api_key=openai_key)
+                if openai_provider.is_available():
+                    logger.info("Using OpenAI as default provider")
+                    return openai_provider
+            except Exception as e:
+                logger.debug(f"Cannot use OpenAI provider: {str(e)}")
         
         # Fallback to mock provider
         logger.info("Using Mock provider as fallback")
@@ -114,14 +131,14 @@ class LLMGatewayAgent:
                     logger.warning(f"Provider {type(provider).__name__} not available")
                     continue
                 
-                response = provider.generate(request)
+                response = provider.generate_response(request)
                 
-                if response.success:
-                    self.usage_stats["successful_requests"] += 1
-                    self._update_usage_stats(response)
-                    return response
-                else:
-                    logger.warning(f"Provider {type(provider).__name__} returned error: {response.error_message}")
+                # Update usage stats
+                self.usage_stats["successful_requests"] += 1
+                self.usage_stats["total_tokens"] += response.usage_stats.get("total_tokens", 0)
+                self.usage_stats["total_cost"] += response.cost_estimate
+                
+                return response
                     
             except Exception as e:
                 logger.error(f"Error with provider {type(provider).__name__}: {str(e)}")
@@ -130,25 +147,11 @@ class LLMGatewayAgent:
         self.usage_stats["failed_requests"] += 1
         return LLMResponse(
             content="",
-            model=request.model.value,
-            usage={},
-            finish_reason="error",
-            response_time_ms=0,
-            success=False,
-            error_message="All LLM providers failed"
+            model=request.model,
+            usage_stats={},
+            cost_estimate=0.0,
+            metadata={"error": "All LLM providers failed"}
         )
-    
-    def _update_usage_stats(self, response: LLMResponse):
-        """Update usage statistics."""
-        usage = response.usage
-        if "total_tokens" in usage:
-            self.usage_stats["total_tokens"] += usage["total_tokens"]
-        
-        # Estimate cost (simplified)
-        if hasattr(self.primary_provider, 'pricing'):
-            # This is a rough estimate, actual implementation would be more sophisticated
-            estimated_cost = 0.01  # Placeholder
-            self.usage_stats["total_cost"] += estimated_cost
     
     def send_test_prompt(self, prompt: str = "Hello! This is a test prompt.") -> LLMTaskResult:
         """
@@ -162,8 +165,8 @@ class LLMGatewayAgent:
         """
         try:
             messages = [
-                create_system_message("You are a helpful assistant. Respond briefly to test prompts."),
-                create_user_message(prompt)
+                LLMMessage(role="system", content="You are a helpful assistant. Respond briefly to test prompts."),
+                LLMMessage(role="user", content=prompt)
             ]
             
             request = LLMRequest(
@@ -180,8 +183,8 @@ class LLMGatewayAgent:
                 input_data=prompt,
                 output_data=response.content,
                 llm_response=response,
-                success=response.success,
-                error_message=response.error_message
+                success=True,
+                error_message=None
             )
             
         except Exception as e:
@@ -190,15 +193,7 @@ class LLMGatewayAgent:
                 task_type="test_prompt",
                 input_data=prompt,
                 output_data="",
-                llm_response=LLMResponse(
-                    content="",
-                    model=self.default_model.value,
-                    usage={},
-                    finish_reason="error",
-                    response_time_ms=0,
-                    success=False,
-                    error_message=str(e)
-                ),
+                llm_response=None,
                 success=False,
                 error_message=str(e)
             )

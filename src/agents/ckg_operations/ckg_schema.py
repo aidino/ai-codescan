@@ -11,6 +11,27 @@ from typing import Dict, List, Any
 from dataclasses import dataclass
 
 
+@dataclass
+class CKGNode:
+    """Đại diện cho một node trong CKG."""
+    id: str
+    type: "NodeType"
+    properties: Dict[str, Any]
+
+
+@dataclass
+class CKGRelationship:
+    """Đại diện cho một relationship trong CKG."""
+    type: "RelationshipType"
+    source_id: str
+    target_id: str
+    properties: Dict[str, Any] = None
+    
+    def __post_init__(self):
+        if self.properties is None:
+            self.properties = {}
+
+
 class NodeType(Enum):
     """Định nghĩa các loại nodes trong CKG."""
     # Common nodes
@@ -673,21 +694,85 @@ class CKGSchema:
     @classmethod
     def get_cypher_find_relationships(cls, relationship_type: RelationshipType, **filters) -> str:
         """
-        Tạo Cypher query để tìm relationships.
+        Tạo Cypher query để tìm relationships theo type và filters.
         
         Args:
             relationship_type: Loại relationship cần tìm
-            **filters: Các bộ lọc
+            **filters: Filters cho properties
             
         Returns:
-            str: Cypher query
+            str: Cypher query string
         """
         where_conditions = []
         for key, value in filters.items():
-            where_conditions.append(f"r.{key} = {repr(value)}")
+            if isinstance(value, str):
+                where_conditions.append(f"r.{key} = '{value}'")
+            else:
+                where_conditions.append(f"r.{key} = {value}")
+                
+        where_clause = " AND ".join(where_conditions) if where_conditions else ""
+        where_part = f"WHERE {where_clause}" if where_clause else ""
         
-        where_clause = ""
-        if where_conditions:
-            where_clause = f" WHERE {' AND '.join(where_conditions)}"
-        
-        return f"MATCH (source)-[r:{relationship_type.value}]->(target){where_clause} RETURN source, r, target" 
+        return f"""
+        MATCH (a)-[r:{relationship_type.value}]->(b)
+        {where_part}
+        RETURN a, r, b
+        """
+
+
+# Utility functions để tạo nodes và relationships
+def create_file_node(name: str, path: str, line_count: int, language: str) -> CKGNode:
+    """Tạo file node."""
+    return CKGNode(
+        id=f"file:{path}",
+        type=NodeType.FILE,
+        properties={
+            "name": name,
+            "path": path,
+            "line_count": line_count,
+            "language": language
+        }
+    )
+
+
+def create_function_node(name: str, file_path: str, start_line: int, end_line: int, parameters: List[str]) -> CKGNode:
+    """Tạo function node."""
+    return CKGNode(
+        id=f"function:{file_path}:{name}:{start_line}",
+        type=NodeType.FUNCTION,
+        properties={
+            "name": name,
+            "file_path": file_path,
+            "start_line": start_line,
+            "end_line": end_line,
+            "parameters": parameters
+        }
+    )
+
+
+def create_class_node(name: str, file_path: str, start_line: int, end_line: int, base_classes: List[str]) -> CKGNode:
+    """Tạo class node."""
+    return CKGNode(
+        id=f"class:{file_path}:{name}:{start_line}",
+        type=NodeType.CLASS,
+        properties={
+            "name": name,
+            "file_path": file_path,
+            "start_line": start_line,
+            "end_line": end_line,
+            "base_classes": base_classes
+        }
+    )
+
+
+def create_import_relationship(source_id: str, target_id: str, import_statement: str, line_number: int) -> CKGRelationship:
+    """Tạo import relationship."""
+    return CKGRelationship(
+        type=RelationshipType.IMPORTS,
+        source_id=source_id,
+        target_id=target_id,
+        properties={
+            "import_statement": import_statement,
+            "line_number": line_number
+        }
+    ) 

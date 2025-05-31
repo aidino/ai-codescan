@@ -48,8 +48,9 @@ from agents.interaction_tasking.presentation import PresentationAgent
 # Import PATHandlerAgent
 from agents.interaction_tasking.pat_handler import PATHandlerAgent
 
-from ..core.logging import log_repository_analysis_start, get_debug_logger
-from ..core.logging import log_repository_analysis_end
+# Fix relative imports - use absolute imports instead
+from core.logging import log_repository_analysis_start, get_debug_logger
+from core.logging import log_repository_analysis_end
 
 
 def initialize_auth_system():
@@ -631,36 +632,62 @@ def render_authenticated_sidebar():
                 if len(title) > 25:
                     title = title[:22] + "..."
                 
-                # Create session button với hover effect
-                button_style = """
-                    background: white;
-                    border: 1px solid #e1e5e9;
-                    border-radius: 10px;
-                    padding: 0.75rem;
-                    margin-bottom: 0.5rem;
-                    cursor: pointer;
-                    transition: all 0.3s ease;
-                    text-align: left;
-                    width: 100%;
-                """
-                
-                if st.button(
-                    f"{type_icon} {title}\n{status_icon} {session.status.value}",
-                    key=f"session_{session.session_id}_{i}",
-                    use_container_width=True,
-                    help=f"Created: {session.created_at[:10] if session.created_at else 'Unknown'}"
-                ):
-                    view_session(session.session_id)
+                # Create session item với modern card design
+                with st.container():
+                    st.markdown(f"""
+                        <div style="
+                            background: white;
+                            border: 1px solid #e1e5e9;
+                            border-radius: 12px;
+                            padding: 1rem;
+                            margin-bottom: 0.75rem;
+                            box-shadow: 0 3px 10px rgba(0,0,0,0.05);
+                            transition: all 0.3s ease;
+                        " class="session-history-card">
+                            <div style="
+                                display: flex;
+                                align-items: center;
+                                justify-content: space-between;
+                                margin-bottom: 0.5rem;
+                            ">
+                                <span style="font-size: 1.1rem;">{type_icon}</span>
+                                <span style="font-size: 0.9rem; color: #6c757d;">
+                                    {session.created_at[:10] if session.created_at else 'Unknown'}
+                                </span>
+                            </div>
+                            <div style="
+                                font-weight: 600;
+                                color: #343a40;
+                                margin-bottom: 0.25rem;
+                                font-size: 0.9rem;
+                                line-height: 1.3;
+                            ">
+                                {title}
+                            </div>
+                            <div style="
+                                display: flex;
+                                align-items: center;
+                                font-size: 0.8rem;
+                                color: #6c757d;
+                            ">
+                                <span style="margin-right: 0.5rem;">{status_icon}</span>
+                                <span>{session.status.value.replace('_', ' ').title()}</span>
+                            </div>
+                        </div>
+                    """, unsafe_allow_html=True)
+                    
+                    # Button bên trong container để handle click
+                    if st.button(
+                        "👁️ Xem chi tiết",
+                        key=f"session_{session.session_id}_{i}",
+                        use_container_width=True,
+                        help=f"Xem session: {session.title}",
+                        type="secondary"
+                    ):
+                        view_session(session.session_id)
         else:
             st.markdown("""
-                <div style="
-                    text-align: center;
-                    padding: 2rem 1rem;
-                    background: #f8f9fa;
-                    border-radius: 10px;
-                    color: #6c757d;
-                    border: 2px dashed #dee2e6;
-                ">
+                <div class="history-empty-state">
                     <p style="margin: 0; font-size: 0.9rem;">
                         📝 Chưa có session nào<br>
                         Bắt đầu bằng cách tạo scan mới!

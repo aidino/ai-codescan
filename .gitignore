@@ -171,3 +171,55 @@ cython_debug/
 # PyPI configuration file
 .pypirc
 temp_repos/
+
+# AI CodeScan specific ignores
+# Debug and test files
+scripts/debug_*.py
+scripts/test_*.py
+scripts/*_demo.py
+scripts/*_simple.py
+scripts/*_integration.py
+
+# Temporary documentation
+docs/TEST_*.md
+docs/UI_*.md
+docs/ICON_*.md
+docs/TESTING_*.md
+docs/DOCKER_*.md
+docs/TASK_*.md
+*_COMPLETION_*.md
+*_REPORT.md
+WORKFLOW.md
+ISSUES.md
+
+# Log files and debug output
+logs/debug/
+logs/*.json
+logs/*_test_*.json
+logs/*_validation_*.json
+logs/*_analysis.json
+
+# Temporary files at root
+test_*.py
+debug_*.py
+*_demo.py
+README_*_TESTING.md
+config.example.py
+
+# macOS specific
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Coverage files
+.coverage*
+htmlcov/
+
+# Authentication database (keep structure, ignore data)
+logs/history/*.db
+logs/history/*.sqlite
+logs/history/*.sqlite3

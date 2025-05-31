@@ -431,4 +431,81 @@ div[data-baseweb="tab-highlight"] {
     100% {
         background-position: 200% 0;
     }
+}
+
+/* ===== SESSION HISTORY CARD STYLING ===== */
+
+.session-history-card {
+    position: relative;
+    overflow: hidden;
+}
+
+.session-history-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15) !important;
+    border-color: #667eea !important;
+}
+
+.session-history-card:active {
+    transform: translateY(0);
+}
+
+/* Style for buttons inside history cards */
+.session-history-card + div button {
+    margin-top: 0.5rem;
+    border-radius: 8px !important;
+    border: 1px solid #e1e5e9 !important;
+    background: #f8f9fa !important;
+    color: #495057 !important;
+    font-size: 0.8rem !important;
+    padding: 0.4rem 0.8rem !important;
+    height: auto !important;
+    font-weight: 500 !important;
+}
+
+.session-history-card + div button:hover {
+    background: #667eea !important;
+    color: white !important;
+    border-color: #667eea !important;
+    transform: none !important;
+}
+
+/* Animation for history cards */
+@keyframes slideInLeft {
+    from {
+        opacity: 0;
+        transform: translateX(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.session-history-card {
+    animation: slideInLeft 0.3s ease-out;
+}
+
+/* Sidebar history section improvements */
+.sidebar-history {
+    background: #f8f9fa;
+    padding: 1rem;
+    border-radius: 12px;
+    margin-bottom: 1rem;
+}
+
+/* Improved empty state for history */
+.history-empty-state {
+    text-align: center;
+    padding: 2rem 1rem;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-radius: 12px;
+    color: #6c757d;
+    border: 2px dashed #dee2e6;
+    transition: all 0.3s ease;
+}
+
+.history-empty-state:hover {
+    border-color: #ced4da;
+    background: linear-gradient(135deg, #e9ecef 0%, #dee2e6 100%);
 } 
