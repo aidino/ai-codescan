@@ -14,20 +14,28 @@ from pathlib import Path
 from unittest.mock import Mock, patch
 import sys
 import json
+import unittest
+from unittest.mock import Mock, MagicMock
 
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from agents.synthesis_reporting.finding_aggregator import (
-    FindingAggregatorAgent, AggregatedFinding, AggregationStrategy,
-    AggregationResult
+from src.agents.synthesis_reporting.finding_aggregator import (
+    FindingAggregatorAgent,
+    AggregationStrategy,
+    AggregationResult,
+    AggregatedFinding
 )
-from agents.synthesis_reporting.report_generator import (
-    ReportGeneratorAgent, ReportFormat, ExecutiveSummary,
+from src.agents.synthesis_reporting.report_generator import (
+    ReportGeneratorAgent,
+    ReportFormat,
+    GeneratedReport,
     ReportMetadata
 )
-from agents.code_analysis.static_analysis_integrator import (
-    Finding, SeverityLevel, FindingType
+from src.agents.code_analysis import (
+    Finding, SeverityLevel, FindingType,
+    ArchitecturalIssue, ArchitecturalAnalysisResult, 
+    CircularDependency, UnusedElement, IssueType
 )
 
 
@@ -641,5 +649,295 @@ class TestSynthesisReportingIntegration:
         assert len(report) > 0
 
 
-if __name__ == "__main__":
-    pytest.main([__file__]) 
+class TestFindingAggregatorWithArchitectural(unittest.TestCase):
+    """Test cases cho FindingAggregatorAgent với architectural findings."""
+    
+    def setUp(self):
+        """Set up test fixtures."""
+        self.aggregator = FindingAggregatorAgent()
+        
+        # Sample findings
+        self.sample_findings = [
+            Finding(
+                tool="flake8",
+                rule_id="E501",
+                severity=SeverityLevel.MEDIUM,
+                finding_type=FindingType.STYLE,
+                message="Line too long",
+                file_path="src/main.py",
+                line_number=10,
+                column_number=81,
+                suggestion="Break long line"
+            ),
+            Finding(
+                tool="pylint",
+                rule_id="R0903",
+                severity=SeverityLevel.LOW,
+                finding_type=FindingType.REFACTOR,
+                message="Too few public methods",
+                file_path="src/utils.py",
+                line_number=5,
+                column_number=1,
+                suggestion="Add more methods or use function"
+            )
+        ]
+        
+        # Sample architectural issues
+        self.sample_architectural_issues = [
+            ArchitecturalIssue(
+                issue_type=IssueType.CIRCULAR_DEPENDENCY,
+                title="Circular dependency detected",
+                description="Circular dependency between module_a.py and module_b.py",
+                severity=SeverityLevel.HIGH,
+                affected_elements=["src/module_a.py", "src/module_b.py"],
+                suggestion="Refactor to break circular dependency",
+                static_analysis_limitation="This type of dependency may not be caught by standard linters",
+                metadata={"cycle_length": 2, "dependency_type": "import"}
+            ),
+            ArchitecturalIssue(
+                issue_type=IssueType.UNUSED_PUBLIC_ELEMENT,
+                title="Unused public function",
+                description="Public function 'calculate_score' is never called",
+                severity=SeverityLevel.MEDIUM,
+                affected_elements=["src/calculator.py::calculate_score"],
+                suggestion="Consider making this function private or remove if not needed",
+                static_analysis_limitation="Static analysis tools may not detect unused public interfaces",
+                metadata={"element_type": "function", "visibility": "public"}
+            )
+        ]
+        
+        # Sample architectural analysis result
+        self.sample_architectural_result = ArchitecturalAnalysisResult(
+            project_path="/test/project",
+            total_issues=2,
+            issues=self.sample_architectural_issues,
+            circular_dependencies=[
+                CircularDependency(
+                    cycle=["src/module_a.py", "src/module_b.py"],
+                    cycle_type="file",
+                    description="Import cycle detected"
+                )
+            ],
+            unused_elements=[
+                UnusedElement(
+                    element_name="calculate_score",
+                    element_type="function",
+                    file_path="src/calculator.py",
+                    line_number=15,
+                    reason="Function not called from any external module"
+                )
+            ],
+            analysis_scope="file-level",
+            limitations=["Static analysis limitations"],
+            execution_time_seconds=1.5,
+            success=True
+        )
+    
+    def test_aggregate_with_architectural_findings(self):
+        """Test aggregation với architectural findings."""
+        findings_by_source = {
+            "flake8": [self.sample_findings[0]],
+            "pylint": [self.sample_findings[1]]
+        }
+        
+        result = self.aggregator.aggregate_findings(
+            findings_by_source=findings_by_source,
+            strategy=AggregationStrategy.MERGE_DUPLICATES,
+            architectural_result=self.sample_architectural_result
+        )
+        
+        # Assertions
+        self.assertTrue(result.success)
+        self.assertEqual(result.original_findings_count, 4)  # 2 regular + 2 architectural
+        self.assertEqual(result.aggregated_findings_count, 4)  # No duplicates expected
+        
+        # Check architectural findings are included
+        architectural_findings = [
+            f for f in result.aggregated_findings 
+            if f.primary_finding.metadata and f.primary_finding.metadata.get("architectural_issue")
+        ]
+        self.assertEqual(len(architectural_findings), 2)
+    
+    def test_convert_architectural_issues_to_findings(self):
+        """Test conversion của architectural issues thành Finding objects."""
+        findings = self.aggregator._convert_architectural_issues_to_findings(
+            self.sample_architectural_issues
+        )
+        
+        # Assertions
+        self.assertEqual(len(findings), 2)
+        
+        # Test first finding (circular dependency)
+        circ_finding = findings[0]
+        self.assertEqual(circ_finding.tool, "architectural_analyzer")
+        self.assertEqual(circ_finding.rule_id, "ARCH_CIRCULAR_DEPENDENCY")
+        self.assertEqual(circ_finding.severity, SeverityLevel.HIGH)
+        self.assertEqual(circ_finding.finding_type, FindingType.REFACTOR)
+        self.assertTrue(circ_finding.metadata["architectural_issue"])
+        self.assertEqual(circ_finding.metadata["issue_type"], "circular_dependency")
+        
+        # Test second finding (unused element)
+        unused_finding = findings[1]
+        self.assertEqual(unused_finding.rule_id, "ARCH_UNUSED_PUBLIC_ELEMENT")
+        self.assertEqual(unused_finding.severity, SeverityLevel.MEDIUM)
+        self.assertEqual(unused_finding.finding_type, FindingType.WARNING)
+    
+    def test_aggregate_without_architectural_findings(self):
+        """Test aggregation khi không có architectural result."""
+        findings_by_source = {
+            "flake8": [self.sample_findings[0]],
+            "pylint": [self.sample_findings[1]]
+        }
+        
+        result = self.aggregator.aggregate_findings(
+            findings_by_source=findings_by_source,
+            strategy=AggregationStrategy.MERGE_DUPLICATES,
+            architectural_result=None
+        )
+        
+        # Assertions
+        self.assertTrue(result.success)
+        self.assertEqual(result.original_findings_count, 2)
+        self.assertEqual(result.aggregated_findings_count, 2)
+        
+        # No architectural findings
+        architectural_findings = [
+            f for f in result.aggregated_findings 
+            if f.primary_finding.metadata and f.primary_finding.metadata.get("architectural_issue")
+        ]
+        self.assertEqual(len(architectural_findings), 0)
+    
+    def test_aggregate_with_failed_architectural_result(self):
+        """Test aggregation với failed architectural result."""
+        failed_result = ArchitecturalAnalysisResult(
+            project_path="/test/project",
+            total_issues=0,
+            issues=[],
+            circular_dependencies=[],
+            unused_elements=[],
+            analysis_scope="failed-analysis",
+            limitations=["Analysis failed"],
+            execution_time_seconds=0.1,
+            success=False,
+            error_message="Analysis failed"
+        )
+        
+        findings_by_source = {
+            "flake8": [self.sample_findings[0]]
+        }
+        
+        result = self.aggregator.aggregate_findings(
+            findings_by_source=findings_by_source,
+            architectural_result=failed_result
+        )
+        
+        # Should succeed but not include architectural findings
+        self.assertTrue(result.success)
+        self.assertEqual(result.original_findings_count, 1)
+        self.assertEqual(result.aggregated_findings_count, 1)
+
+
+class TestReportGeneratorWithArchitectural(unittest.TestCase):
+    """Test cases cho ReportGeneratorAgent với architectural findings support."""
+    
+    def setUp(self):
+        """Set up test fixtures."""
+        self.generator = ReportGeneratorAgent()
+        
+        # Mock aggregation result với architectural findings
+        architectural_finding = AggregatedFinding(
+            primary_finding=Finding(
+                tool="architectural_analyzer",
+                rule_id="ARCH_CIRCULAR_DEPENDENCY",
+                severity=SeverityLevel.HIGH,
+                finding_type=FindingType.REFACTOR,
+                message="Circular dependency between module_a.py and module_b.py",
+                file_path="src/module_a.py",
+                line_number=None,
+                column_number=None,
+                suggestion="Refactor to break circular dependency",
+                metadata={
+                    "architectural_issue": True,
+                    "issue_type": "circular_dependency",
+                    "title": "Circular dependency detected",
+                    "affected_elements": ["src/module_a.py", "src/module_b.py"],
+                    "static_analysis_limitation": "This type of dependency may not be caught by standard linters"
+                }
+            ),
+            duplicate_count=1,
+            sources=["architectural_analysis"]
+        )
+        
+        regular_finding = AggregatedFinding(
+            primary_finding=Finding(
+                tool="flake8",
+                rule_id="E501",
+                severity=SeverityLevel.MEDIUM,
+                finding_type=FindingType.STYLE,
+                message="Line too long",
+                file_path="src/main.py",
+                line_number=10,
+                column_number=81,
+                suggestion="Break long line"
+            ),
+            duplicate_count=1,
+            sources=["flake8"]
+        )
+        
+        self.mock_aggregation_result = AggregationResult(
+            original_findings_count=2,
+            aggregated_findings_count=2,
+            aggregated_findings=[architectural_finding, regular_finding],
+            deduplication_stats={"duplicates_removed": 0, "reduction_percentage": 0},
+            aggregation_strategy=AggregationStrategy.MERGE_DUPLICATES,
+            success=True
+        )
+    
+    def test_text_report_with_architectural_findings(self):
+        """Test text report generation với architectural findings."""
+        report = self.generator.generate_report(
+            aggregation_result=self.mock_aggregation_result,
+            project_name="Test Project",
+            report_format=ReportFormat.TEXT
+        )
+        
+        # Assertions
+        self.assertTrue(report.success)
+        self.assertIn("ARCHITECTURAL ISSUES", report.content)
+        self.assertIn("Circular dependency detected", report.content)
+        self.assertIn("This type of dependency may not be caught by standard linters", report.content)
+        self.assertIn("TOP PROBLEMATIC FILES", report.content)  # Should exclude architectural issues
+    
+    def test_json_report_preserves_architectural_metadata(self):
+        """Test JSON report preserves architectural metadata."""
+        report = self.generator.generate_report(
+            aggregation_result=self.mock_aggregation_result,
+            project_name="Test Project",
+            report_format=ReportFormat.JSON
+        )
+        
+        # Assertions
+        self.assertTrue(report.success)
+        
+        # Parse JSON content (would need actual JSON parsing in real implementation)
+        # For now, just check that metadata is mentioned
+        self.assertIn("architectural_issue", report.content)
+        self.assertIn("affected_elements", report.content)
+    
+    def test_markdown_report_with_architectural_section(self):
+        """Test Markdown report includes architectural section."""
+        report = self.generator.generate_report(
+            aggregation_result=self.mock_aggregation_result,
+            project_name="Test Project",
+            report_format=ReportFormat.MARKDOWN
+        )
+        
+        # Assertions
+        self.assertTrue(report.success)
+        self.assertIn("## Architectural Issues", report.content)
+        self.assertIn("### Circular Dependencies", report.content)
+
+
+if __name__ == '__main__':
+    # Run tests
+    unittest.main(verbosity=2) 

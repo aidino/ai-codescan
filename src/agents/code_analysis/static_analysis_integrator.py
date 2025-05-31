@@ -47,6 +47,7 @@ class Finding:
     message: str
     tool: str
     suggestion: Optional[str] = None
+    metadata: Optional[Dict[str, Any]] = None
     
     def __str__(self) -> str:
         """String representation."""

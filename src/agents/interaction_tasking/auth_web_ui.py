@@ -815,13 +815,19 @@ def render_new_session_interface():
             force_language = st.selectbox(
                 "Ngôn ngữ cụ thể",
                 ["Auto-detect", "Python", "Java", "Dart", "Kotlin"],
-                help="Ghi đè tự động phát hiện ngôn ngữ"
+                help="Ghi đè tự động phát hiện ngôn ngữ. Chọn Auto-detect để phân tích multi-language."
             )
             
             include_tests = st.checkbox(
                 "Bao gồm file test",
                 value=True,
                 help="Bao gồm các file test trong phân tích"
+            )
+            
+            architectural_analysis = st.checkbox(
+                "Phân tích kiến trúc",
+                value=True,
+                help="Bật phân tích kiến trúc để phát hiện circular dependencies và unused elements"
             )
         
         with col2:
@@ -830,13 +836,21 @@ def render_new_session_interface():
                 value=False,
                 help="Bật phân tích chi tiết hơn nhưng chậm hơn"
             )
+            
+            enable_ckg_analysis = st.checkbox(
+                "Phân tích CKG",
+                value=True,
+                help="Bật Code Knowledge Graph analysis để hiểu sâu hơn về mối quan hệ code"
+            )
     
     # Update options
     options.update({
         'analysis_type': analysis_type,
         'force_language': None if force_language == "Auto-detect" else force_language.lower(),
         'include_tests': include_tests,
-        'detailed_analysis': detailed_analysis
+        'detailed_analysis': detailed_analysis,
+        'architectural_analysis': architectural_analysis,
+        'enable_ckg_analysis': enable_ckg_analysis
     })
     
     # Render appropriate interface based on analysis type
@@ -1356,7 +1370,7 @@ def process_authenticated_qna_question(question: str, context_repo: Optional[str
 
 
 def render_analysis_results():
-    """Render analysis results."""
+    """Render analysis results với support cho architectural findings và multi-language analysis."""
     if not st.session_state.analysis_results:
         return
     
@@ -1379,25 +1393,151 @@ def render_analysis_results():
     with col4:
         st.metric("Quality score", f"{results.get('quality_score', 85)}/100")
     
-    # Severity breakdown
-    st.markdown("### ⚠️ Phân bố mức độ nghiêm trọng")
-    
-    severity_data = results.get('severity_counts', {})
-    if severity_data:
-        col1, col2, col3, col4 = st.columns(4)
+    # Architectural Issues
+    architectural_issues = results.get('architectural_issues', {})
+    if architectural_issues:
+        st.markdown("### 🏗️ Architectural Analysis")
+        
+        col1, col2 = st.columns(2)
         
         with col1:
-            st.metric("🔴 Critical", severity_data.get('critical', 0))
+            circular_deps = architectural_issues.get('circular_dependencies', [])
+            if circular_deps:
+                st.markdown("#### 🔄 Circular Dependencies")
+                for dep in circular_deps[:5]:  # Top 5
+                    cycle_str = " → ".join(dep.get('cycle', []))
+                    if cycle_str:
+                        cycle_str += f" → {dep['cycle'][0]}"  # Complete the circle
+                    st.markdown(f"- **{dep.get('cycle_type', 'file')} cycle**: {cycle_str}")
+                    if dep.get('description'):
+                        st.markdown(f"  *{dep['description']}*")
+        
         with col2:
-            st.metric("🟠 Major", severity_data.get('major', 0))
-        with col3:
-            st.metric("🟡 Minor", severity_data.get('minor', 0))
-        with col4:
-            st.metric("🔵 Info", severity_data.get('info', 0))
+            unused_elements = architectural_issues.get('unused_elements', [])
+            if unused_elements:
+                st.markdown("#### 🗑️ Unused Public Elements")
+                for element in unused_elements[:5]:  # Top 5
+                    st.markdown(f"- **{element.get('element_type', 'element')}**: `{element.get('element_name', 'Unknown')}`")
+                    st.markdown(f"  📄 {element.get('file_path', 'Unknown file')}")
+                    if element.get('reason'):
+                        st.markdown(f"  *{element['reason']}*")
+        
+        # Architectural limitations warning
+        limitations = architectural_issues.get('limitations', [])
+        if limitations:
+            with st.expander("⚠️ Analysis Limitations"):
+                for limitation in limitations:
+                    st.markdown(f"- {limitation}")
+
+    # Language Distribution Charts
+    languages = results.get('languages', {})
+    if languages and len(languages) > 1:
+        st.markdown("### 📊 Ngôn ngữ Distribution")
+        
+        import plotly.express as px
+        
+        # Language files distribution
+        lang_data = []
+        for lang, data in languages.items():
+            file_count = data.get('file_count', 0)
+            if file_count > 0:
+                lang_data.append({'Language': lang.title(), 'Files': file_count})
+        
+        if lang_data:
+            import pandas as pd
+            df = pd.DataFrame(lang_data)
+            fig = px.pie(df, values='Files', names='Language', 
+                        title="Files by Language",
+                        color_discrete_sequence=px.colors.qualitative.Set3)
+            st.plotly_chart(fig, use_container_width=True)
+
+    # Static Analysis Results by Language
+    static_analysis = results.get('static_analysis_by_language', {})
+    if static_analysis:
+        st.markdown("### 🔍 Kết quả Static Analysis theo Ngôn ngữ")
+        
+        # Create tabs for each language
+        languages = list(static_analysis.keys())
+        if len(languages) == 1:
+            # Single language - no tabs needed
+            lang = languages[0]
+            lang_results = static_analysis[lang]
+            _render_language_analysis_results(lang, lang_results)
+        else:
+            # Multiple languages - use tabs
+            tabs = st.tabs([f"📄 {lang.title()}" for lang in languages])
+            
+            for tab, lang in zip(tabs, languages):
+                with tab:
+                    lang_results = static_analysis[lang]
+                    _render_language_analysis_results(lang, lang_results)
     
     # Summary
     st.markdown("### 📝 Tóm tắt")
-    st.markdown(results.get('summary', 'No summary available'))
+    summary = results.get('summary', 'No summary available')
+    if isinstance(summary, dict):
+        # Detailed summary
+        if summary.get('overall_quality'):
+            st.markdown(f"**Chất lượng tổng thể:** {summary['overall_quality']}")
+        if summary.get('key_issues'):
+            st.markdown("**Vấn đề chính:**")
+            for issue in summary['key_issues'][:5]:  # Top 5 issues
+                st.markdown(f"- {issue}")
+        if summary.get('recommendations'):
+            st.markdown("**Khuyến nghị:**")
+            for rec in summary['recommendations'][:3]:  # Top 3 recommendations
+                st.markdown(f"- {rec}")
+    else:
+        st.markdown(summary)
+
+def _render_language_analysis_results(language: str, results: Dict[str, Any]):
+    """Render analysis results cho một ngôn ngữ cụ thể."""
+    st.markdown(f"#### {language.title()} Analysis Results")
+    
+    # Tool-specific results
+    tools_used = results.get('tools_used', [])
+    if tools_used:
+        st.markdown(f"**Tools sử dụng:** {', '.join(tools_used)}")
+    
+    # Findings count
+    findings_count = results.get('findings_count', 0)
+    st.metric(f"🔍 {language.title()} Issues", findings_count)
+    
+    # Top issues for this language
+    top_issues = results.get('top_issues', [])
+    if top_issues:
+        st.markdown("**Top Issues:**")
+        for issue in top_issues[:5]:
+            severity_icon = {
+                'critical': '🔴',
+                'high': '🟠', 
+                'medium': '🟡',
+                'low': '🔵'
+            }.get(issue.get('severity', 'medium').lower(), '🔵')
+            
+            st.markdown(f"{severity_icon} **{issue.get('rule_id', 'Unknown')}**: {issue.get('message', 'No message')}")
+            if issue.get('file_path'):
+                st.markdown(f"   📄 {issue['file_path']}{':' + str(issue['line_number']) if issue.get('line_number') else ''}")
+    
+    # Language-specific metrics
+    if language.lower() == 'java':
+        if results.get('checkstyle_issues'):
+            st.metric("Checkstyle Issues", results['checkstyle_issues'])
+        if results.get('pmd_issues'):
+            st.metric("PMD Issues", results['pmd_issues'])
+    elif language.lower() == 'kotlin':
+        if results.get('detekt_issues'):
+            st.metric("Detekt Issues", results['detekt_issues'])
+    elif language.lower() == 'dart':
+        if results.get('dart_analyzer_issues'):
+            st.metric("Dart Analyzer Issues", results['dart_analyzer_issues'])
+    elif language.lower() == 'python':
+        if results.get('flake8_issues'):
+            st.metric("Flake8 Issues", results['flake8_issues'])
+        if results.get('pylint_issues'):
+            st.metric("Pylint Issues", results['pylint_issues'])
+        if results.get('mypy_issues'):
+            st.metric("MyPy Issues", results['mypy_issues'])
 
 
 def render_history_view():

@@ -2,7 +2,7 @@
 """
 AI CodeScan - Finding Aggregator Agent
 
-Agent tổng hợp findings từ multiple sources (static analysis, CKG analysis, etc.).
+Agent tổng hợp findings từ multiple sources (static analysis, CKG analysis, architectural analysis, etc.).
 Thực hiện deduplication, prioritization và categorization.
 """
 
@@ -12,7 +12,10 @@ from loguru import logger
 from collections import defaultdict
 from enum import Enum
 
-from ..code_analysis import Finding, AnalysisResult, SeverityLevel, FindingType, ContextualFinding
+from ..code_analysis import (
+    Finding, AnalysisResult, SeverityLevel, FindingType, ContextualFinding,
+    ArchitecturalIssue, ArchitecturalAnalysisResult, CircularDependency, UnusedElement, IssueType
+)
 
 
 class AggregationStrategy(Enum):
@@ -80,19 +83,29 @@ class FindingAggregatorAgent:
     
     def aggregate_findings(self, 
                           findings_by_source: Dict[str, List[Finding]],
-                          strategy: AggregationStrategy = AggregationStrategy.MERGE_DUPLICATES) -> AggregationResult:
+                          strategy: AggregationStrategy = AggregationStrategy.MERGE_DUPLICATES,
+                          architectural_result: Optional[ArchitecturalAnalysisResult] = None) -> AggregationResult:
         """
-        Aggregate findings từ multiple sources.
+        Aggregate findings từ multiple sources, bao gồm architectural analysis.
         
         Args:
             findings_by_source: Dict source_name -> findings
             strategy: Aggregation strategy
+            architectural_result: Optional architectural analysis result
             
         Returns:
             AggregationResult: Kết quả aggregation
         """
         try:
             logger.info(f"Aggregating findings từ {len(findings_by_source)} sources với strategy {strategy.value}")
+            
+            # Add architectural findings nếu có
+            if architectural_result and architectural_result.success:
+                logger.info(f"Including {len(architectural_result.issues)} architectural issues")
+                architectural_findings = self._convert_architectural_issues_to_findings(
+                    architectural_result.issues
+                )
+                findings_by_source["architectural_analysis"] = architectural_findings
             
             # Flatten all findings
             all_findings = []
@@ -571,4 +584,56 @@ class FindingAggregatorAgent:
                 "source": dict(source_breakdown)
             },
             "top_problematic_files": top_files
-        } 
+        }
+
+    def _convert_architectural_issues_to_findings(self, issues: List[ArchitecturalIssue]) -> List[Finding]:
+        """
+        Convert architectural issues thành Finding objects.
+        
+        Args:
+            issues: List of architectural issues
+            
+        Returns:
+            List[Finding]: Converted findings
+        """
+        findings = []
+        
+        for issue in issues:
+            # Map architectural severity to standard severity
+            severity_mapping = {
+                "low": SeverityLevel.LOW,
+                "medium": SeverityLevel.MEDIUM, 
+                "high": SeverityLevel.HIGH,
+                "critical": SeverityLevel.CRITICAL
+            }
+            
+            # Map issue type to finding type
+            type_mapping = {
+                IssueType.CIRCULAR_DEPENDENCY: FindingType.REFACTOR,
+                IssueType.UNUSED_PUBLIC_ELEMENT: FindingType.WARNING,
+                IssueType.ORPHANED_MODULE: FindingType.WARNING,
+                IssueType.EXCESSIVE_COUPLING: FindingType.REFACTOR
+            }
+            
+            finding = Finding(
+                tool="architectural_analyzer",
+                rule_id=f"ARCH_{issue.issue_type.value.upper()}",
+                severity=severity_mapping.get(issue.severity.value, SeverityLevel.MEDIUM),
+                finding_type=type_mapping.get(issue.issue_type, FindingType.WARNING),
+                message=issue.description,
+                file_path=issue.affected_elements[0] if issue.affected_elements else "unknown",
+                line_number=None,  # Architectural issues don't have specific line numbers
+                column_number=None,
+                suggestion=issue.suggestion or "Xem xét refactor để cải thiện kiến trúc code",
+                metadata={
+                    "architectural_issue": True,
+                    "issue_type": issue.issue_type.value,
+                    "title": issue.title,
+                    "affected_elements": issue.affected_elements,
+                    "static_analysis_limitation": issue.static_analysis_limitation,
+                    "original_metadata": issue.metadata
+                }
+            )
+            findings.append(finding)
+        
+        return findings 

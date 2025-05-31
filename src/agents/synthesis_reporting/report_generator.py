@@ -190,6 +190,7 @@ class ReportGeneratorAgent:
         severity_counts = {}
         type_counts = {}
         file_counts = {}
+        architectural_issues = []
         
         for finding in result.aggregated_findings:
             severity = finding.primary_finding.severity.value
@@ -199,30 +200,60 @@ class ReportGeneratorAgent:
             severity_counts[severity] = severity_counts.get(severity, 0) + 1
             type_counts[ftype] = type_counts.get(ftype, 0) + 1
             file_counts[fpath] = file_counts.get(fpath, 0) + 1
+            
+            # Collect architectural issues cho separate section
+            if finding.primary_finding.metadata and finding.primary_finding.metadata.get("architectural_issue"):
+                architectural_issues.append(finding)
         
-        if severity_counts:
-            lines.append("SEVERITY BREAKDOWN")
-            lines.append("-" * 20)
-            for severity in ["critical", "high", "medium", "low"]:
-                count = severity_counts.get(severity, 0)
-                if count > 0:
-                    lines.append(f"{severity.capitalize()}: {count}")
+        lines.append("FINDINGS BY SEVERITY")
+        lines.append("-" * 25)
+        for severity in ["critical", "high", "medium", "low"]:
+            if severity in severity_counts:
+                lines.append(f"{severity.upper()}: {severity_counts[severity]}")
+        lines.append("")
+        
+        lines.append("FINDINGS BY TYPE")
+        lines.append("-" * 20)
+        for ftype, count in sorted(type_counts.items()):
+            lines.append(f"{ftype.upper()}: {count}")
+        lines.append("")
+        
+        # Architectural Issues Section (nếu có)
+        if architectural_issues:
+            lines.append("ARCHITECTURAL ISSUES")
+            lines.append("-" * 25)
+            lines.append(f"Found {len(architectural_issues)} architectural issues:")
             lines.append("")
+            
+            for arch_finding in architectural_issues:
+                metadata = arch_finding.primary_finding.metadata
+                lines.append(f"• {metadata.get('title', 'Unknown Issue')} [{arch_finding.primary_finding.severity.value.upper()}]")
+                lines.append(f"  Type: {metadata.get('issue_type', 'unknown')}")
+                lines.append(f"  Description: {arch_finding.primary_finding.message}")
+                if metadata.get('affected_elements'):
+                    lines.append(f"  Affected: {', '.join(metadata['affected_elements'][:3])}{'...' if len(metadata['affected_elements']) > 3 else ''}")
+                if arch_finding.primary_finding.suggestion:
+                    lines.append(f"  Suggestion: {arch_finding.primary_finding.suggestion}")
+                if metadata.get('static_analysis_limitation'):
+                    lines.append(f"  Note: {metadata['static_analysis_limitation']}")
+                lines.append("")
+            
+        # Top problematic files (excluding architectural issues)
+        non_architectural_findings = [f for f in result.aggregated_findings 
+                                    if not (f.primary_finding.metadata and f.primary_finding.metadata.get("architectural_issue"))]
         
-        if type_counts:
-            lines.append("FINDING TYPES")
-            lines.append("-" * 20)
-            for ftype, count in sorted(type_counts.items(), key=lambda x: x[1], reverse=True):
-                lines.append(f"{ftype.capitalize()}: {count}")
-            lines.append("")
-        
-        # Top problematic files
-        if file_counts:
+        if non_architectural_findings:
+            file_counts_filtered = {}
+            for finding in non_architectural_findings:
+                fpath = finding.primary_finding.file_path
+                file_counts_filtered[fpath] = file_counts_filtered.get(fpath, 0) + 1
+            
+            top_files = sorted(file_counts_filtered.items(), key=lambda x: x[1], reverse=True)[:10]
+            
             lines.append("TOP PROBLEMATIC FILES")
-            lines.append("-" * 20)
-            top_files = sorted(file_counts.items(), key=lambda x: x[1], reverse=True)[:5]
+            lines.append("-" * 25)
             for fpath, count in top_files:
-                lines.append(f"{fpath}: {count} finding(s)")
+                lines.append(f"{fpath}: {count} issues")
             lines.append("")
         
         # High priority findings
