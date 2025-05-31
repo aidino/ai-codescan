@@ -24,6 +24,22 @@ from .llm_gateway import (
     LLMTaskResult
 )
 
+from .prompt_formatter import (
+    PromptFormatterModule,
+    PromptTemplate,
+    PromptType,
+    PromptContext
+)
+
+from .context_provider import (
+    ContextProviderModule,
+    ContextData,
+    ContextPreparationRequest,
+    ContextPreparationResult,
+    ContextType,
+    PreparedContext
+)
+
 __all__ = [
     # Provider Abstraction
     'LLMProvider',
@@ -40,5 +56,17 @@ __all__ = [
     
     # Gateway
     'LLMGatewayAgent',
-    'LLMTaskResult'
+    'LLMTaskResult',
+    
+    # Prompt & Context
+    'PromptFormatterModule',
+    'PromptTemplate',
+    'PromptType',
+    'PromptContext',
+    'ContextProviderModule',
+    'ContextData',
+    'ContextPreparationRequest',
+    'ContextPreparationResult',
+    'ContextType',
+    'PreparedContext'
 ]

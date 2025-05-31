@@ -11,6 +11,7 @@ import time
 import uuid
 from pathlib import Path
 from typing import Optional, Dict, Any
+from datetime import datetime
 
 import streamlit as st
 
@@ -47,6 +48,23 @@ from agents.interaction_tasking.presentation import PresentationAgent
 
 # Import PATHandlerAgent
 from agents.interaction_tasking.pat_handler import PATHandlerAgent
+
+# Import diagram generator
+from agents.synthesis_reporting.diagram_generator import DiagramGeneratorAgent, DiagramType, DiagramFormat
+
+# Import feedback system
+from agents.interaction_tasking.feedback_collector import (
+    FeedbackCollectorAgent, 
+    UserFeedback, 
+    FeedbackType, 
+    FeatureArea, 
+    SatisfactionLevel,
+    create_feedback_collector
+)
+from agents.interaction_tasking.ui_improvement_agent import (
+    UIImprovementAgent,
+    create_ui_improvement_agent
+)
 
 # Fix relative imports - use absolute imports instead
 from core.logging import log_repository_analysis_start, get_debug_logger
@@ -110,6 +128,13 @@ def initialize_session_state():
     # PAT management state
     if "stored_pat_hash" not in st.session_state:
         st.session_state.stored_pat_hash = None
+    
+    # Feedback system initialization
+    if "feedback_collector" not in st.session_state:
+        st.session_state.feedback_collector = create_feedback_collector()
+    
+    if "ui_improvement_agent" not in st.session_state:
+        st.session_state.ui_improvement_agent = create_ui_improvement_agent(st.session_state.feedback_collector)
 
 
 def check_authentication():
@@ -830,7 +855,7 @@ def render_new_session_interface():
     
     analysis_type = st.selectbox(
         "Loại phân tích",
-        ["Repository Review", "Pull Request Review", "Code Q&A"],
+        ["Repository Review", "Pull Request Review", "Code Q&A", "Code Diagrams", "User Feedback"],
         help="Chọn loại phân tích bạn muốn thực hiện"
     )
     
@@ -887,6 +912,10 @@ def render_new_session_interface():
         render_authenticated_pr_interface(options)
     elif analysis_type == "Code Q&A":
         render_authenticated_qna_interface(options)
+    elif analysis_type == "Code Diagrams":
+        render_code_diagrams_interface(options)
+    elif analysis_type == "User Feedback":
+        render_user_feedback_interface(options)
 
 
 def render_authenticated_repository_interface(options: Dict[str, Any]):
@@ -1299,58 +1328,47 @@ def process_authenticated_pr_analysis(repo_url: str, pr_id: str, platform: str, 
 
 
 def render_authenticated_qna_interface(options: Dict[str, Any]):
-    """Render Q&A interface với user authentication."""
+    """Render Q&A interface để người dùng đặt câu hỏi về code."""
     st.markdown("### ❓ Code Q&A")
     
-    # Context repository
-    st.markdown("#### 📦 Context Repository (tuỳ chọn)")
-    col1, col2 = st.columns([3, 1])
+    # Context source selection
+    context_options = ["None", "Use Repository", "Previous Analysis"]
+    context_source = st.selectbox(
+        "📁 Nguồn ngữ cảnh:",
+        context_options,
+        help="Chọn nguồn thông tin để trả lời câu hỏi"
+    )
     
-    with col1:
+    context_repo = None
+    if context_source == "Use Repository":
         context_repo = st.text_input(
-            "Repository URL để làm context",
+            "🔗 Repository URL:",
             placeholder="https://github.com/username/repository",
-            help="Repository để cung cấp context cho câu hỏi"
-        )
-    
-    with col2:
-        st.markdown("<br>", unsafe_allow_html=True)
-        if st.button("📥 Load Context"):
-            if context_repo:
-                process_authenticated_context_loading(context_repo, options)
-    
-    # Chat interface
-    st.markdown("#### 💬 Chat Interface")
-    
-    # Load existing chat messages from current session
-    if st.session_state.current_session_id:
-        session = st.session_state.session_manager.get_session(
-            st.session_state.current_session_id,
-            st.session_state.current_user.id
+            help="URL repository để làm ngữ cảnh trả lời"
         )
         
-        if session and session.chat_messages:
-            for message in session.chat_messages:
-                if message.role == 'user':
-                    st.markdown(f"**🙋 You:** {message.content}")
-                else:
-                    st.markdown(f"**🤖 AI:** {message.content}")
-            st.divider()
+        if context_repo:
+            with st.spinner("📊 Đang load context từ repository..."):
+                process_authenticated_context_loading(context_repo, options)
     
-    # Chat input
-    user_question = st.text_area(
-        "Đặt câu hỏi về code:",
-        placeholder="Ví dụ: Giải thích function này hoạt động như thế nào?",
-        height=100
+    # Question input
+    question = st.text_area(
+        "💬 Câu hỏi của bạn:",
+        placeholder="Ví dụ: Class nào chịu trách nhiệm xử lý authentication? Hàm main() làm gì?",
+        height=100,
+        help="Đặt câu hỏi về cấu trúc code, chức năng, hoặc thiết kế"
     )
     
     col1, col2 = st.columns([3, 1])
+    
     with col2:
-        if st.button("💬 Gửi câu hỏi", type="primary", use_container_width=True):
-            if user_question.strip():
-                process_authenticated_qna_question(user_question, context_repo, options)
-            else:
-                st.error("Vui lòng nhập câu hỏi!")
+        ask_button = st.button("🤖 Hỏi AI", type="primary", use_container_width=True)
+    
+    if ask_button and question:
+        if context_source == "Use Repository" and not context_repo:
+            st.error("⚠️ Vui lòng nhập URL repository cho ngữ cảnh!")
+        else:
+            process_authenticated_qna_question(question, context_repo, options)
 
 
 def process_authenticated_context_loading(context_repo: str, options: Dict[str, Any]):
@@ -1633,6 +1651,654 @@ def load_custom_css():
     except Exception as e:
         logger.error(f"Error loading CSS file: {str(e)}")
         return ""
+
+
+def render_code_diagrams_interface(options: Dict[str, Any]):
+    """Render interface để sinh sơ đồ code."""
+    st.markdown("### 📊 Code Diagrams")
+    
+    # Repository URL for context
+    col1, col2 = st.columns([3, 1])
+    
+    with col1:
+        repo_url = st.text_input(
+            "🔗 Repository URL",
+            placeholder="https://github.com/username/repository",
+            help="URL repository để analyze và sinh sơ đồ"
+        )
+    
+    with col2:
+        st.markdown("<br>", unsafe_allow_html=True)
+        load_repo = st.button("📥 Load Repository", type="secondary", use_container_width=True)
+    
+    # Diagram generation options
+    st.markdown("---")
+    st.markdown("#### ⚙️ Diagram Configuration")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        # Target element selection
+        target_element = st.text_input(
+            "🎯 Target Element",
+            placeholder="ClassName hoặc module.path",
+            help="Class name hoặc module path để tạo sơ đồ"
+        )
+        
+        # Diagram type
+        diagram_type = st.selectbox(
+            "📋 Diagram Type",
+            ["Class Diagram", "Interface Diagram", "Package Diagram", "Dependency Diagram", "Inheritance Diagram"],
+            help="Loại sơ đồ muốn tạo"
+        )
+        
+        # Output format
+        output_format = st.selectbox(
+            "🖼️ Output Format",
+            ["PlantUML", "Mermaid"],
+            help="Format output của sơ đồ"
+        )
+    
+    with col2:
+        # Diagram options
+        st.markdown("**🔧 Options:**")
+        
+        include_relationships = st.checkbox(
+            "Include Relationships",
+            value=True,
+            help="Bao gồm quan hệ giữa các classes"
+        )
+        
+        include_methods = st.checkbox(
+            "Include Methods",
+            value=True,
+            help="Hiển thị methods trong classes"
+        )
+        
+        include_attributes = st.checkbox(
+            "Include Attributes",
+            value=True,
+            help="Hiển thị attributes/fields"
+        )
+        
+        filter_private = st.checkbox(
+            "Filter Private Members",
+            value=True,
+            help="Ẩn private methods và attributes"
+        )
+        
+        max_depth = st.slider(
+            "Max Depth",
+            min_value=1,
+            max_value=5,
+            value=2,
+            help="Độ sâu tối đa cho related elements"
+        )
+    
+    # Generate diagram button
+    st.markdown("---")
+    col1, col2, col3 = st.columns([2, 1, 2])
+    
+    with col2:
+        generate_button = st.button("🎨 Generate Diagram", type="primary", use_container_width=True)
+    
+    # Process diagram generation
+    if generate_button:
+        if not repo_url:
+            st.error("⚠️ Vui lòng nhập Repository URL!")
+        elif not target_element:
+            st.error("⚠️ Vui lòng nhập Target Element!")
+        else:
+            # Update options với diagram parameters
+            diagram_options = {
+                'repo_url': repo_url,
+                'target_element': target_element,
+                'diagram_type': diagram_type,
+                'output_format': output_format,
+                'include_relationships': include_relationships,
+                'include_methods': include_methods,
+                'include_attributes': include_attributes,
+                'filter_private': filter_private,
+                'max_depth': max_depth
+            }
+            options.update(diagram_options)
+            
+            process_diagram_generation(options)
+
+
+def process_diagram_generation(options: Dict[str, Any]):
+    """Process diagram generation request."""
+    try:
+        with st.spinner("🎨 Generating diagram..."):
+            # Initialize diagram generator (mock for now)
+            diagram_generator = DiagramGeneratorAgent(ckg_query_agent=None)
+            
+            # Map UI strings to enum values
+            diagram_type_map = {
+                "Class Diagram": DiagramType.CLASS_DIAGRAM,
+                "Interface Diagram": DiagramType.INTERFACE_DIAGRAM,
+                "Package Diagram": DiagramType.PACKAGE_DIAGRAM,
+                "Dependency Diagram": DiagramType.DEPENDENCY_DIAGRAM,
+                "Inheritance Diagram": DiagramType.INHERITANCE_DIAGRAM
+            }
+            
+            output_format_map = {
+                "PlantUML": DiagramFormat.PLANTUML,
+                "Mermaid": DiagramFormat.MERMAID
+            }
+            
+            # Generate diagram
+            result = diagram_generator.generate_class_diagram_code(
+                class_name_or_module_path=options['target_element'],
+                diagram_type=options['output_format'].lower(),
+                include_relationships=options['include_relationships'],
+                include_methods=options['include_methods'],
+                include_attributes=options['include_attributes'],
+                filter_private=options['filter_private'],
+                max_depth=options['max_depth']
+            )
+            
+            if result.success:
+                st.success("✅ Diagram generated successfully!")
+                
+                # Display results
+                st.markdown("---")
+                st.markdown("### 📊 Generated Diagram")
+                
+                # Info panel
+                col1, col2, col3, col4 = st.columns(4)
+                with col1:
+                    st.metric("Target", result.target_element)
+                with col2:
+                    st.metric("Type", result.diagram_type.value.replace('_', ' ').title())
+                with col3:
+                    st.metric("Format", result.output_format.value.upper())
+                with col4:
+                    st.metric("Generation Time", f"{result.generation_time:.2f}s")
+                
+                # Diagram code display
+                st.markdown("#### 📝 Diagram Code")
+                
+                # Display with syntax highlighting
+                if result.output_format == DiagramFormat.PLANTUML:
+                    st.code(result.diagram_code, language="plantuml")
+                elif result.output_format == DiagramFormat.MERMAID:
+                    st.code(result.diagram_code, language="mermaid")
+                
+                # Copy to clipboard button
+                if st.button("📋 Copy to Clipboard"):
+                    st.session_state['diagram_code'] = result.diagram_code
+                    st.success("Code copied to session state!")
+                
+                # Render diagram if possible
+                if result.output_format == DiagramFormat.MERMAID:
+                    try:
+                        st.markdown("#### 🎨 Rendered Diagram")
+                        # Try to render Mermaid diagram using streamlit-agraph or similar
+                        # For now, show as code with note
+                        st.info("💡 **Tip**: Copy the Mermaid code above and paste it into [Mermaid Live Editor](https://mermaid.live/) để xem diagram được render.")
+                        
+                        # Display in expandable section for easy copying
+                        with st.expander("📋 Mermaid Code for External Viewer"):
+                            st.text_area(
+                                "Mermaid Code:",
+                                value=result.diagram_code,
+                                height=200,
+                                help="Copy code này và paste vào Mermaid viewer"
+                            )
+                    except Exception as e:
+                        logger.warning(f"Could not render Mermaid diagram: {e}")
+                
+                elif result.output_format == DiagramFormat.PLANTUML:
+                    st.markdown("#### 🎨 Diagram Preview")
+                    st.info("💡 **Tip**: Copy the PlantUML code above và paste vào [PlantUML Server](http://www.plantuml.com/plantuml/uml/) để xem diagram được render.")
+                    
+                    # Display in expandable section for easy copying
+                    with st.expander("📋 PlantUML Code for External Viewer"):
+                        st.text_area(
+                            "PlantUML Code:",
+                            value=result.diagram_code,
+                            height=200,
+                            help="Copy code này và paste vào PlantUML viewer"
+                        )
+                
+                # Additional info
+                if result.elements_included:
+                    st.markdown("#### 📋 Elements Included")
+                    st.write(", ".join(result.elements_included))
+                
+                if result.relationships_included:
+                    st.markdown("#### 🔗 Relationships Included")
+                    st.write(", ".join(result.relationships_included))
+                
+                # Save to session
+                if 'diagram_results' not in st.session_state:
+                    st.session_state.diagram_results = []
+                
+                st.session_state.diagram_results.append({
+                    'timestamp': time.time(),
+                    'target_element': result.target_element,
+                    'diagram_type': result.diagram_type.value,
+                    'output_format': result.output_format.value,
+                    'diagram_code': result.diagram_code,
+                    'generation_time': result.generation_time
+                })
+                
+            else:
+                st.error(f"❌ Failed to generate diagram: {result.error_message}")
+                
+                if result.warnings:
+                    st.warning("⚠️ Warnings:")
+                    for warning in result.warnings:
+                        st.write(f"• {warning}")
+                        
+    except Exception as e:
+        logger.error(f"Diagram generation error: {e}")
+        st.error(f"❌ Error generating diagram: {str(e)}")
+        
+        # Show debug info in expander
+        with st.expander("🐛 Debug Information"):
+            st.write("**Error Details:**")
+            st.write(str(e))
+            st.write("**Options:**")
+            st.json(options)
+
+
+def render_user_feedback_interface(options: Dict[str, Any]):
+    """Render comprehensive user feedback interface."""
+    st.markdown("### 📝 Phản hồi người dùng")
+    
+    # Tabs for feedback and analytics
+    tab1, tab2, tab3 = st.tabs(["💬 Gửi phản hồi", "📊 Thống kê", "🔧 Cải tiến"])
+    
+    with tab1:
+        render_feedback_form()
+    
+    with tab2:
+        render_feedback_analytics()
+    
+    with tab3:
+        render_improvement_roadmap()
+
+
+def render_feedback_form():
+    """Render feedback submission form."""
+    st.markdown("#### 💬 Chia sẻ trải nghiệm của bạn")
+    
+    with st.form("feedback_form"):
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            # Rating
+            rating = st.slider(
+                "⭐ Đánh giá tổng thể (1-5 sao)",
+                min_value=1,
+                max_value=5,
+                value=4,
+                help="1 = Rất không hài lòng, 5 = Rất hài lòng"
+            )
+            
+            # Satisfaction level
+            satisfaction_options = {
+                "Rất không hài lòng": SatisfactionLevel.VERY_DISSATISFIED,
+                "Không hài lòng": SatisfactionLevel.DISSATISFIED,
+                "Trung tính": SatisfactionLevel.NEUTRAL,
+                "Hài lòng": SatisfactionLevel.SATISFIED,
+                "Rất hài lòng": SatisfactionLevel.VERY_SATISFIED
+            }
+            satisfaction_text = st.selectbox(
+                "😊 Mức độ hài lòng",
+                list(satisfaction_options.keys()),
+                index=3  # Default to "Hài lòng"
+            )
+            satisfaction_level = satisfaction_options[satisfaction_text]
+            
+            # Feedback type
+            feedback_type_options = {
+                "Phản hồi chung": FeedbackType.GENERAL,
+                "Yêu cầu tính năng": FeedbackType.FEATURE_REQUEST,
+                "Báo lỗi": FeedbackType.BUG_REPORT,
+                "Cải tiến giao diện": FeedbackType.UI_IMPROVEMENT,
+                "Vấn đề hiệu suất": FeedbackType.PERFORMANCE_ISSUE,
+                "Tài liệu": FeedbackType.DOCUMENTATION
+            }
+            feedback_type_text = st.selectbox(
+                "📋 Loại phản hồi",
+                list(feedback_type_options.keys())
+            )
+            feedback_type = feedback_type_options[feedback_type_text]
+        
+        with col2:
+            # Feature area
+            feature_area_options = {
+                "Phân tích Repository": FeatureArea.REPOSITORY_ANALYSIS,
+                "Sơ đồ Code": FeatureArea.CODE_DIAGRAMS,
+                "Review PR": FeatureArea.PR_REVIEW,
+                "Hỏi đáp Code": FeatureArea.CODE_QNA,
+                "Giao diện Web": FeatureArea.WEB_INTERFACE,
+                "Xác thực": FeatureArea.AUTHENTICATION,
+                "Báo cáo": FeatureArea.REPORTING,
+                "Hỗ trợ đa ngôn ngữ": FeatureArea.MULTI_LANGUAGE_SUPPORT
+            }
+            feature_area_text = st.selectbox(
+                "🎯 Khu vực tính năng",
+                list(feature_area_options.keys())
+            )
+            feature_area = feature_area_options[feature_area_text]
+            
+            # Anonymous option
+            anonymous = st.checkbox(
+                "🕶️ Gửi phản hồi ẩn danh",
+                value=False,
+                help="Không lưu thông tin người dùng với phản hồi này"
+            )
+            
+            # Contact email (optional)
+            contact_email = st.text_input(
+                "📧 Email liên hệ (tùy chọn)",
+                placeholder="your.email@example.com",
+                help="Để lại email nếu bạn muốn được phản hồi"
+            )
+        
+        # Title and description
+        title = st.text_input(
+            "📝 Tiêu đề phản hồi",
+            placeholder="Tóm tắt ngắn gọn về phản hồi của bạn",
+            max_chars=100
+        )
+        
+        description = st.text_area(
+            "📄 Mô tả chi tiết",
+            placeholder="Mô tả chi tiết về trải nghiệm, vấn đề gặp phải, hoặc đề xuất cải tiến...",
+            height=120,
+            max_chars=1000
+        )
+        
+        suggestions = st.text_area(
+            "💡 Đề xuất cải tiến",
+            placeholder="Bạn có đề xuất gì để cải thiện trải nghiệm không?",
+            height=80,
+            max_chars=500
+        )
+        
+        # Submit button
+        submitted = st.form_submit_button(
+            "🚀 Gửi phản hồi",
+            type="primary",
+            use_container_width=True
+        )
+        
+        if submitted:
+            if not title or not description:
+                st.error("⚠️ Vui lòng điền tiêu đề và mô tả!")
+            else:
+                process_user_feedback_submission(
+                    rating=rating,
+                    satisfaction_level=satisfaction_level,
+                    feedback_type=feedback_type,
+                    feature_area=feature_area,
+                    title=title,
+                    description=description,
+                    suggestions=suggestions,
+                    contact_email=contact_email if contact_email else None,
+                    anonymous=anonymous
+                )
+
+
+def render_feedback_analytics():
+    """Render feedback analytics dashboard."""
+    st.markdown("#### 📊 Thống kê phản hồi")
+    
+    try:
+        analytics = st.session_state.feedback_collector.get_feedback_summary()
+        
+        if analytics.total_feedback_count == 0:
+            st.info("📭 Chưa có phản hồi nào được thu thập.")
+            return
+        
+        # Key metrics
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            st.metric(
+                "📊 Tổng phản hồi",
+                analytics.total_feedback_count,
+                delta=analytics.recent_feedback_count,
+                delta_color="normal"
+            )
+        
+        with col2:
+            st.metric(
+                "⭐ Đánh giá TB",
+                f"{analytics.average_rating:.1f}/5",
+                delta=None
+            )
+        
+        with col3:
+            st.metric(
+                "📈 Phản hồi gần đây",
+                f"{analytics.recent_feedback_count} (7 ngày)",
+                delta=None
+            )
+        
+        with col4:
+            st.metric(
+                "📋 Tỷ lệ phản hồi",
+                f"{analytics.response_rate:.1f}%",
+                delta=None
+            )
+        
+        # Charts
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.markdown("##### 😊 Phân bố mức độ hài lòng")
+            if analytics.satisfaction_distribution:
+                satisfaction_data = {
+                    k.replace('_', ' ').title(): v 
+                    for k, v in analytics.satisfaction_distribution.items()
+                    if v > 0
+                }
+                st.bar_chart(satisfaction_data)
+            else:
+                st.info("Không có dữ liệu mức độ hài lòng")
+        
+        with col2:
+            st.markdown("##### 📋 Phân bố loại phản hồi")
+            if analytics.feedback_type_distribution:
+                feedback_data = {
+                    k.replace('_', ' ').title(): v 
+                    for k, v in analytics.feedback_type_distribution.items()
+                    if v > 0
+                }
+                st.bar_chart(feedback_data)
+            else:
+                st.info("Không có dữ liệu loại phản hồi")
+        
+        # Feature area distribution
+        st.markdown("##### 🎯 Phân bố theo khu vực tính năng")
+        if analytics.feature_area_distribution:
+            feature_data = {
+                k.replace('_', ' ').title(): v 
+                for k, v in analytics.feature_area_distribution.items()
+                if v > 0
+            }
+            st.bar_chart(feature_data)
+        else:
+            st.info("Không có dữ liệu khu vực tính năng")
+        
+        # Recent feedback
+        st.markdown("##### 📝 Phản hồi gần đây")
+        recent_feedback = st.session_state.feedback_collector.get_recent_feedback(limit=5)
+        
+        if recent_feedback:
+            for feedback in recent_feedback:
+                with st.expander(f"⭐ {feedback.rating}/5 - {feedback.title}"):
+                    col1, col2 = st.columns([2, 1])
+                    with col1:
+                        st.write(f"**Mô tả:** {feedback.description}")
+                        if feedback.suggestions:
+                            st.write(f"**Đề xuất:** {feedback.suggestions}")
+                    with col2:
+                        st.write(f"**Loại:** {feedback.feedback_type.value}")
+                        st.write(f"**Khu vực:** {feedback.feature_area.value}")
+                        st.write(f"**Thời gian:** {feedback.timestamp.strftime('%d/%m/%Y %H:%M')}")
+        else:
+            st.info("Không có phản hồi gần đây")
+            
+    except Exception as e:
+        st.error(f"❌ Lỗi khi tải thống kê: {str(e)}")
+
+
+def render_improvement_roadmap():
+    """Render UI improvement roadmap."""
+    st.markdown("#### 🔧 Lộ trình cải tiến")
+    
+    try:
+        # Generate improvements from feedback
+        if st.button("🔄 Phân tích phản hồi và tạo đề xuất cải tiến"):
+            with st.spinner("Đang phân tích phản hồi..."):
+                improvements = st.session_state.ui_improvement_agent.analyze_feedback_for_improvements()
+                if improvements:
+                    st.success(f"✅ Đã tạo {len(improvements)} đề xuất cải tiến!")
+                else:
+                    st.info("📭 Chưa có đủ phản hồi để tạo đề xuất cải tiến.")
+        
+        # Show improvement roadmap
+        improvements = st.session_state.ui_improvement_agent.get_improvement_roadmap()
+        
+        if not improvements:
+            st.info("📋 Chưa có đề xuất cải tiến nào. Hãy phân tích phản hồi để tạo đề xuất.")
+            return
+        
+        # Filter by priority
+        priority_filter = st.selectbox(
+            "🎯 Lọc theo mức độ ưu tiên",
+            ["Tất cả", "Critical", "High", "Medium", "Low"]
+        )
+        
+        if priority_filter != "Tất cả":
+            from agents.interaction_tasking.ui_improvement_agent import ImprovementPriority
+            priority_map = {
+                "Critical": ImprovementPriority.CRITICAL,
+                "High": ImprovementPriority.HIGH,
+                "Medium": ImprovementPriority.MEDIUM,
+                "Low": ImprovementPriority.LOW
+            }
+            filtered_improvements = [
+                imp for imp in improvements 
+                if imp.priority == priority_map[priority_filter]
+            ]
+        else:
+            filtered_improvements = improvements
+        
+        # Display improvements
+        for improvement in filtered_improvements[:10]:  # Show top 10
+            priority_color = {
+                "CRITICAL": "🔴",
+                "HIGH": "🟠", 
+                "MEDIUM": "🟡",
+                "LOW": "🟢"
+            }.get(improvement.priority.name, "⚪")
+            
+            with st.expander(f"{priority_color} {improvement.title} ({improvement.priority.name})"):
+                col1, col2 = st.columns([2, 1])
+                
+                with col1:
+                    st.write(f"**Mô tả:** {improvement.description}")
+                    st.write(f"**Ghi chú triển khai:** {improvement.implementation_notes}")
+                    if improvement.related_feedback_ids:
+                        st.write(f"**Liên quan đến phản hồi:** {len(improvement.related_feedback_ids)} phản hồi")
+                
+                with col2:
+                    st.write(f"**Danh mục:** {improvement.category.value}")
+                    st.write(f"**Khu vực:** {improvement.feature_area.value}")
+                    st.write(f"**Ước tính công sức:** {improvement.estimated_effort}")
+                    st.write(f"**Tác động dự kiến:** {improvement.expected_impact}")
+                    st.write(f"**Trạng thái:** {improvement.status.value}")
+                    
+                    # Implementation button
+                    if improvement.status.value == "planned":
+                        if st.button(f"✅ Đánh dấu hoàn thành", key=f"impl_{improvement.improvement_id}"):
+                            success = st.session_state.ui_improvement_agent.implement_improvement(
+                                improvement.improvement_id,
+                                "Marked as implemented via UI"
+                            )
+                            if success:
+                                st.success("✅ Đã đánh dấu hoàn thành!")
+                                st.rerun()
+        
+        # Improvement statistics
+        st.markdown("##### 📈 Thống kê cải tiến")
+        stats = st.session_state.ui_improvement_agent.get_improvement_stats()
+        
+        if stats:
+            col1, col2, col3 = st.columns(3)
+            
+            with col1:
+                st.metric("📊 Tổng cải tiến", stats.get("total_improvements", 0))
+            
+            with col2:
+                st.metric("✅ Tỷ lệ hoàn thành", f"{stats.get('implementation_rate', 0):.1f}%")
+            
+            with col3:
+                critical_count = stats.get("by_priority", {}).get("CRITICAL", 0)
+                st.metric("🔴 Cải tiến quan trọng", critical_count)
+            
+    except Exception as e:
+        st.error(f"❌ Lỗi khi tải lộ trình cải tiến: {str(e)}")
+
+
+def process_user_feedback_submission(
+    rating: int,
+    satisfaction_level: SatisfactionLevel,
+    feedback_type: FeedbackType,
+    feature_area: FeatureArea,
+    title: str,
+    description: str,
+    suggestions: str,
+    contact_email: Optional[str],
+    anonymous: bool
+):
+    """Process user feedback submission."""
+    try:
+        # Create feedback object
+        feedback = UserFeedback(
+            feedback_id="",  # Will be generated
+            user_id=None if anonymous else (st.session_state.current_user.user_id if st.session_state.current_user else None),
+            session_id=st.session_state.current_session_id,
+            feedback_type=feedback_type,
+            feature_area=feature_area,
+            satisfaction_level=satisfaction_level,
+            rating=rating,
+            title=title,
+            description=description,
+            suggestions=suggestions,
+            contact_email=contact_email,
+            anonymous=anonymous,
+            timestamp=datetime.now()
+        )
+        
+        # Submit feedback
+        success = st.session_state.feedback_collector.collect_feedback(feedback)
+        
+        if success:
+            st.success("🎉 Cảm ơn bạn đã gửi phản hồi! Chúng tôi sẽ sử dụng thông tin này để cải thiện dịch vụ.")
+            st.balloons()
+            
+            # Show appreciation message based on rating
+            if rating >= 4:
+                st.info("😊 Rất vui khi bạn hài lòng với dịch vụ của chúng tôi!")
+            elif rating == 3:
+                st.info("🤔 Chúng tôi sẽ cố gắng cải thiện để mang lại trải nghiệm tốt hơn!")
+            else:
+                st.warning("😔 Chúng tôi xin lỗi vì trải nghiệm chưa tốt. Phản hồi của bạn rất quan trọng để chúng tôi cải thiện!")
+        else:
+            st.error("❌ Có lỗi xảy ra khi gửi phản hồi. Vui lòng thử lại!")
+            
+    except Exception as e:
+        st.error(f"❌ Lỗi khi xử lý phản hồi: {str(e)}")
+        logger.error(f"Error processing feedback: {e}")
 
 
 def main():

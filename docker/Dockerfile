@@ -6,6 +6,7 @@ RUN apt-get update && apt-get install -y \
     git \
     curl \
     build-essential \
+    openjdk-17-jre-headless \
     && rm -rf /var/lib/apt/lists/*
 
 # Create non-root user

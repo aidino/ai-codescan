@@ -52,14 +52,31 @@ class CKGQueryInterfaceAgent:
     - Đảm bảo security và validation
     """
     
-    def __init__(self, connection_config: Optional[ConnectionConfig] = None):
+    def __init__(self, 
+                 uri: str = None,
+                 username: str = "neo4j",
+                 password: str = "password"):
         """
-        Khởi tạo CKGQueryInterfaceAgent.
+        Initialize CKG Query Interface với Neo4j connection.
         
         Args:
-            connection_config: Cấu hình kết nối Neo4j
+            uri: Neo4j URI (default from environment)
+            username: Neo4j username
+            password: Neo4j password
         """
-        self.config = connection_config or ConnectionConfig()
+        # Default URI prioritizes environment variable, then Docker hostname, then localhost
+        if uri is None:
+            uri = os.getenv('NEO4J_URI', 'bolt://ai-codescan-neo4j:7687')
+            # Fallback to localhost if running outside Docker
+            if 'ai-codescan-neo4j' in uri:
+                import socket
+                try:
+                    socket.gethostbyname('ai-codescan-neo4j')
+                except socket.gaierror:
+                    uri = "bolt://localhost:7687"
+        
+        self.uri = uri
+        self.config = ConnectionConfig(uri=self.uri, username=username, password=password)
         self.driver = None
         self.schema = CKGSchema()
         self.query_cache = {}  # Simple cache cho frequent queries
@@ -90,8 +107,8 @@ class CKGQueryInterfaceAgent:
                 auth=(self.config.username, self.config.password)
             )
             
-            # Test connection
-            with self.driver.session(database=self.config.database) as session:
+            # Test connection - sử dụng default database cho Community Edition
+            with self.driver.session() as session:
                 session.run("RETURN 1")
             
             logger.info(f"Kết nối Neo4j thành công: {self.config.uri}")
@@ -131,7 +148,7 @@ class CKGQueryInterfaceAgent:
         start_time = time.time()
         
         try:
-            with self.driver.session(database=self.config.database) as session:
+            with self.driver.session() as session:
                 result = session.run(query, parameters or {})
                 records = []
                 

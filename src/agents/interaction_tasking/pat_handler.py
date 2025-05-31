@@ -44,6 +44,21 @@ class PATHandlerAgent:
         self.cipher = Fernet(self.session_key)
         self.stored_pats: Dict[str, PATInfo] = {}
         
+        # Platform patterns for validation
+        self.platform_patterns = {
+            'github': {
+                'prefixes': ['ghp_', 'gho_', 'ghu_', 'ghs_', 'ghr_'],
+                'min_length': 40
+            },
+            'gitlab': {
+                'prefixes': ['glpat-'],
+                'min_length': 20
+            },
+            'bitbucket': {
+                'min_length': 32
+            }
+        }
+        
         logger.info("PATHandlerAgent initialized with secure encryption")
     
     def store_pat(
@@ -163,6 +178,19 @@ class PATHandlerAgent:
         
         logger.info(f"PAT format validation for {platform}: {'VALID' if True else 'INVALID'}")
         return True
+    
+    def is_valid_pat_format(self, token: str, platform: str) -> bool:
+        """
+        Alias for validate_pat_format với reversed parameter order.
+        
+        Args:
+            token: Token to validate
+            platform: Git platform
+            
+        Returns:
+            True if format is valid
+        """
+        return self.validate_pat_format(platform, token)
     
     def get_platform_pat_url(self, platform: str) -> str:
         """

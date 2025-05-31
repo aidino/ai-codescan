@@ -312,37 +312,40 @@ class GitOperationsAgent:
     @debug_trace
     def cleanup_repository(self, local_path: str) -> bool:
         """
-        Clean up cloned repository.
+        Clean up cloned repository by removing local directory.
         
         Args:
-            local_path: Path to repository to clean up
+            local_path: Path to the repository directory to clean up
             
         Returns:
             True if cleanup successful, False otherwise
         """
-        self._debug_logger.log_step("Starting repository cleanup", {"path": local_path})
+        self._debug_logger.log_step("Cleaning up repository", {"path": local_path})
         
         try:
             if os.path.exists(local_path):
-                # Get size before cleanup for metrics
-                import shutil
-                size_before = sum(f.stat().st_size for f in Path(local_path).rglob('*') if f.is_file())
-                
                 shutil.rmtree(local_path)
-                
-                self._debug_logger.log_step("Repository cleanup completed", {
-                    "path": local_path,
-                    "size_cleaned_mb": size_before / (1024 * 1024)
-                })
-                
-                self._debug_logger.log_performance_metric("cleanup_size_mb", size_before / (1024 * 1024), "MB")
+                self._debug_logger.log_step("Repository cleanup successful", {"path": local_path})
                 return True
             else:
-                self._debug_logger.log_step("Repository path does not exist, cleanup skipped", {"path": local_path})
-                return True
+                self._debug_logger.log_step("Repository path not found", {"path": local_path})
+                return True  # Already clean
         except Exception as e:
-            self._debug_logger.log_error(e, {"local_path": local_path, "operation": "cleanup_repository"})
+            self._debug_logger.log_error(e, {"operation": "cleanup", "path": local_path})
             return False
+
+    @debug_trace
+    def is_valid_repository_url(self, url: str) -> bool:
+        """
+        Public method to validate repository URL.
+        
+        Args:
+            url: Repository URL to validate
+            
+        Returns:
+            True if URL is valid Git repository URL
+        """
+        return self._is_valid_git_url(url)
     
     def _is_valid_git_url(self, url: str) -> bool:
         """Validate if URL is a valid Git repository URL."""

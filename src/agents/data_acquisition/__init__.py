@@ -14,15 +14,15 @@ from .git_operations import (
 from .language_identifier import (
     LanguageIdentifierAgent,
     LanguageInfo,
-    FrameworkInfo,
-    DependencyInfo
+    ProjectLanguageProfile
 )
 
 from .data_preparation import (
     DataPreparationAgent,
     ProjectDataContext,
-    FileAnalysisResult,
-    StructureNode
+    FileInfo,
+    DirectoryStructure,
+    ProjectMetadata
 )
 
 __all__ = [
@@ -34,12 +34,12 @@ __all__ = [
     # Language Identification  
     'LanguageIdentifierAgent',
     'LanguageInfo',
-    'FrameworkInfo',
-    'DependencyInfo',
+    'ProjectLanguageProfile',
     
     # Data Preparation
     'DataPreparationAgent',
     'ProjectDataContext',
-    'FileAnalysisResult',
-    'StructureNode'
+    'FileInfo',
+    'DirectoryStructure',
+    'ProjectMetadata'
 ]

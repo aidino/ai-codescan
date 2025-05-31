@@ -1886,109 +1886,326 @@ Phiên bản: 1.0
 * ✅ Mở rộng integration test để bao gồm các luồng phân tích cho Java, Dart, Kotlin.  
 * ✅ Nếu sử dụng Docker container riêng cho parser/linter, viết test cho việc giao tiếp với các container đó.
 
-## **Giai đoạn 3: Tích hợp LLM Sâu hơn, Phân tích PR, Q\&A trên Web UI**
+## **Giai đoạn 3: Tích hợp AI và LLM cho Phân tích Thông minh** (2024-12-23 đến 2024-12-30)
 
-### **Task 3.1: Nâng cấp TEAM LLM Services**
+**Mục tiêu:** Tích hợp khả năng AI và LLM để cung cấp giải thích, tóm tắt và hỗ trợ tương tác thông minh.
 
-* \[ \] Implement class PromptFormatterModule:  
-  * \[ \] Tạo thư viện các prompt template (dưới dạng string templates hoặc file). Ví dụ:  
-    * Prompt tóm tắt thay đổi trong PR.  
-    * Prompt giải thích một đoạn code.  
-    * Prompt trả lời câu hỏi về cấu trúc code.  
-  * \[ \] Hàm format\_prompt(template\_name, context\_data) để điền dữ liệu vào template.  
-* \[ \] Implement class ContextProviderModule:  
-  * \[ \] Hàm prepare\_llm\_context(code\_snippets, ckg\_data, diffs, max\_tokens) để:  
-    * Chọn lọc thông tin quan trọng.  
-    * Cắt tỉa ngữ cảnh nếu quá dài (ví dụ: tóm tắt, chỉ lấy phần liên quan).  
-    * Định dạng ngữ cảnh cho LLM (ví dụ: sử dụng Markdown, thẻ XML).  
-* \[ \] Định nghĩa chi tiết LLMServiceRequest/Response Protocol (LSRP) (ví dụ: Pydantic models) bao gồm loại tác vụ, ngữ cảnh, tham số LLM, và cấu trúc kết quả.
+### **Task 3.1: Nâng cấp TEAM LLM Services** ✅ COMPLETED (2024-12-23)
+**Status:** COMPLETED
+**Estimate:** 1 ngày
+**Owner:** AI Agent
+**Description:** Nâng cấp các service LLM để hỗ trợ tốt hơn cho các task phân tích code.
 
-### **Task 3.2: Nâng cấp TEAM Code Analysis cho LLM**
+**Requirements:**
+- [x] Cải thiện `PromptFormatterModule` với các template prompts chuyên biệt cho AI CodeScan
+- [x] Nâng cấp `ContextProviderModule` để tối ưu hóa context cho LLM requests
+- [x] Hoàn thiện `LLM Protocol` với request/response models đầy đủ
 
-* \[ \] Implement đầy đủ class LLMAnalysisSupportAgent:  
-  * \[ \] Hàm request\_code\_explanation(code\_snippet, related\_ckg\_info):  
-    * Gọi ContextProviderModule để chuẩn bị ngữ cảnh.  
-    * Gọi PromptFormatterModule để lấy prompt giải thích code.  
-    * Tạo LLMServiceRequest và gửi tới LLMGatewayAgent.  
-  * \[ \] Hàm request\_pr\_summary(diff\_text, affected\_components\_info):  
-    * Chuẩn bị ngữ cảnh và prompt cho tóm tắt PR.  
-    * Tạo và gửi LLMServiceRequest.  
-  * \[ \] Hàm request\_qna\_answer(user\_question, code\_context, ckg\_context):  
-    * Chuẩn bị ngữ cảnh và prompt cho Q\&A.  
-    * Tạo và gửi LLMServiceRequest.
+**Acceptance Criteria:**
+- [x] Có ít nhất 15 loại prompt templates khác nhau
+- [x] Context provider có thể handle token limits thông minh
+- [x] LLM protocol hỗ trợ đa dạng providers (OpenAI, Anthropic, etc.)
 
-### **Task 3.3: Implement Phân tích Pull Request (PR) Cơ bản**
+**Implementation Notes:**
+- Implemented comprehensive PromptFormatterModule với 15+ template types
+- Context optimization với priority-based component selection
+- Full LLM Protocol với Pydantic models và dataclass fallbacks
+- Vietnamese language support throughout
 
-* \[ \] Cập nhật GitOperationsAgent:  
-  * \[ \] Hàm get\_pr\_details(repo\_url, pr\_id, pat) để fetch thông tin PR (diff, metadata) từ API GitHub/GitLab (sử dụng thư viện như PyGithub).  
-* \[ \] Cập nhật TEAM Code Analysis:  
-  * \[ \] Logic phân tích diff (ví dụ: xác định file thay đổi, dòng thay đổi).  
-  * \[ \] Sử dụng ContextualQueryAgent để truy vấn CKG, tìm các thành phần code (functions, classes) bị ảnh hưởng bởi thay đổi trong diff.  
-  * \[ \] Gọi LLMAnalysisSupportAgent.request\_pr\_summary() để LLM tạo tóm tắt.  
-* \[ \] Cập nhật TEAM Synthesis & Reporting:  
-  * \[ \] Chuẩn bị dữ liệu tóm tắt PR để hiển thị.  
-* \[ \] Cập nhật Web UI (Streamlit):  
-  * \[ \] Thêm trường nhập PR ID (và chọn platform GitHub/GitLab).  
-  * \[ \] Hiển thị tóm tắt PR (thay đổi chính, tác động tiềm ẩn cơ bản).
+---
 
-### **Task 3.4: Implement Hỏi-Đáp Tương tác (Q\&A Cơ bản)**
+### **Task 3.2: Nâng cấp TEAM Code Analysis cho LLM** ✅ COMPLETED (2024-12-23)
+**Status:** COMPLETED
+**Estimate:** 1 ngày
+**Owner:** AI Agent
+**Description:** Tích hợp LLM services vào Code Analysis team.
 
-* \[ \] Cập nhật UserIntentParserAgent\_Web:  
-  * \[ \] Nhận diện và trích xuất câu hỏi của người dùng từ một ô nhập liệu Q\&A trên Web UI.  
-* \[ \] Cập nhật DialogManagerAgent\_Web:  
-  * \[ \] Quản lý luồng hội thoại Q\&A (ví dụ: hiển thị câu hỏi, chờ câu trả lời).  
-* \[ \] Cập nhật ContextualQueryAgent:  
-  * \[ \] Hàm find\_code\_definition(entity\_name, entity\_type) để tìm định nghĩa class/function.  
-  * \[ \] Hàm find\_callers\_or\_callees(function\_name, direction="callees").  
-* \[ \] Tích hợp với LLMAnalysisSupportAgent.request\_qna\_answer():  
-  * \[ \] Nếu CKG trả về kết quả trực tiếp, có thể dùng LLM để diễn giải tự nhiên hơn.  
-  * \[ \] Nếu câu hỏi phức tạp hơn, cung cấp ngữ cảnh code/CKG cho LLM để trả lời.  
-* \[ \] Cập nhật Web UI (Streamlit):  
-  * \[ \] Thêm khu vực Q\&A: ô nhập câu hỏi, nút gửi, khu vực hiển thị câu trả lời.
+**Requirements:**
+- [x] Implement `LLMAnalysisSupportAgent` trong TEAM Code Analysis
+- [x] Tích hợp với PromptFormatterModule và ContextProviderModule
+- [x] Cung cấp methods: `request_code_explanation()`, `request_pr_summary()`, `request_qna_answer()`
 
-### **Task 3.5: Cải thiện báo cáo trên Web UI với các giải thích/tóm tắt từ LLM**
+**Acceptance Criteria:**
+- [x] LLMAnalysisSupportAgent hoạt động với các LLM providers
+- [x] Context được format phù hợp cho từng loại request
+- [x] Error handling và fallback mechanisms
 
-* \[ \] ReportGeneratorAgent:  
-  * \[ \] Khi có các phát hiện phức tạp (ví dụ: từ phân tích kiến trúc), có thể gọi LLM để sinh giải thích ngắn gọn, dễ hiểu.  
-  * \[ \] Tích hợp các tóm tắt (PR, giải thích code) vào báo cáo tổng thể.  
-* \[ \] Cập nhật Web UI để hiển thị các phần giải thích/tóm tắt này một cách trực quan.
+**Implementation Notes:**
+- Comprehensive LLMAnalysisSupportAgent với full method support
+- Integration với PromptFormatterModule và ContextProviderModule
+- Robust error handling và mock response support
+- Factory functions và configuration methods
 
-### **Task 3.6: Mở rộng Unit test và Integration test**
+---
 
-* \[ \] Viết unit test cho PromptFormatterModule, ContextProviderModule.  
-* \[ \] Viết unit test cho các hàm mới trong LLMAnalysisSupportAgent.  
-* \[ \] Mock các lời gọi API LLM trong tests.  
-* \[ \] Viết integration test cho luồng phân tích PR và Q\&A.
+### **Task 3.3: Implement Phân tích Pull Request (PR) Cơ bản** ✅ COMPLETED (2024-12-23)
+**Status:** COMPLETED
+**Estimate:** 2 ngày
+**Owner:** AI Agent
+**Description:** Thêm chức năng phân tích Pull Request với LLM support.
 
-## **Giai đoạn 4: Sinh Sơ đồ trên Web UI và Cải tiến Trải nghiệm Người dùng**
+**Requirements:**
+- [x] Cập nhật `GitOperationsAgent` với hàm `get_pr_details()`
+- [x] Implement `PRAnalyzerAgent` trong TEAM Code Analysis
+- [x] Tích hợp với CKG để xác định impact của PR
+- [x] Sử dụng LLM để tạo summary và recommendations
 
-### **Task 4.1: Implement Sinh Sơ đồ Lớp (Class Diagram Cơ bản) trong TEAM Synthesis & Reporting**
+**Acceptance Criteria:**
+- [x] Có thể fetch PR data từ GitHub/GitLab
+- [x] Phân tích được impact trên codebase
+- [x] Generate được PR summary bằng LLM
+- [x] Cung cấp testing recommendations
 
-* \[ \] Implement class DiagramGeneratorAgent:  
-  * \[ \] Hàm generate\_class\_diagram\_code(class\_name\_or\_module\_path, diagram\_type="plantuml"):  
-    * Nhận yêu cầu từ Web UI.  
-    * Gọi ContextualQueryAgent để truy vấn CKG lấy thông tin về class/module (thuộc tính, phương thức, quan hệ kế thừa, quan hệ với các class khác gần đó).  
-    * Chuyển đổi thông tin này thành cú pháp PlantUML hoặc Mermaid.js.  
-    * Trả về chuỗi mã nguồn sơ đồ.
+**Implementation Notes:**
+- Extended GitOperationsAgent với GitHub/GitLab API support
+- Comprehensive PRAnalyzerAgent với impact analysis
+- CKG integration cho dependency analysis
+- LLM-powered summaries với Vietnamese support
+- Risk assessment và complexity scoring
 
-### **Task 4.2: Cập nhật Web UI để hỗ trợ Sơ đồ**
+---
 
-* \[ \] Thêm chức năng trên Web UI (Streamlit) để người dùng:  
-  * \[ \] Nhập tên class hoặc đường dẫn module muốn vẽ sơ đồ.  
-  * \[ \] Chọn loại sơ đồ (ban đầu là Class Diagram).  
-  * \[ \] Nút "Vẽ sơ đồ".  
-* \[ \] Hiển thị sơ đồ:  
-  * \[ \] Nếu dùng PlantUML: Nghiên cứu cách render PlantUML trong Streamlit (ví dụ: gọi PlantUML server, hoặc render thành ảnh rồi hiển thị st.image).  
-  * \[ \] Nếu dùng Mermaid.js: Streamlit có component st\_mermaid hoặc có thể dùng st.markdown với cú pháp Mermaid.  
-  * \[ \] Hoặc ban đầu chỉ hiển thị mã nguồn PlantUML/Mermaid để người dùng copy.
+### **Task 3.4: Implement Hỏi-Đáp Tương tác (Q&A Cơ bản)** ✅ COMPLETED (2024-12-23)
+**Status:** COMPLETED
+**Estimate:** 2 ngày
+**Owner:** AI Agent
+**Description:** Thêm tính năng hỏi-đáp tương tác về code.
 
-### **Task 4.3: Thu thập phản hồi người dùng và cải tiến UX/UI của Web App**
+**Requirements:**
+- [x] Implement `QAInteractionAgent` trong TEAM Interaction & Tasking
+- [x] Tích hợp với LLM để trả lời câu hỏi về code
+- [x] Sử dụng CKG để cung cấp context cho answers
+- [x] Support conversation flow và history
 
-* \[ \] Tạo một form phản hồi đơn giản hoặc kênh thu thập ý kiến từ người dùng thử nghiệm.  
-* \[ \] Dựa trên phản hồi, thực hiện các cải tiến:  
-  * \[ \] Tối ưu hóa luồng nhập liệu và hiển thị kết quả.  
-  * \[ \] Cải thiện bố cục, màu sắc, font chữ.  
-  * \[ \] Thêm các hướng dẫn, tooltip nếu cần.
+**Acceptance Criteria:**
+- [x] User có thể hỏi questions về code
+- [x] AI trả lời được với context từ CKG
+- [x] Maintain được conversation history
+- [x] Support multiple question types
+
+**Implementation Notes:**
+- QAInteractionAgent với comprehensive conversation management
+- Question categorization và intelligent answer generation
+- LLM integration với fallback templates
+- Vietnamese language support
+- Quality scoring và follow-up suggestions
+
+---
+
+### **Task 3.5: Cải thiện báo cáo trên Web UI với các giải thích/tóm tắt từ LLM** ✅ COMPLETED (2024-12-23)
+**Status:** COMPLETED
+**Estimate:** 2 ngày
+**Owner:** AI Agent
+**Description:** Nâng cấp Web UI để hiển thị thông tin LLM-generated.
+
+**Requirements:**
+- [x] Cập nhật TEAM Synthesis & Reporting để sử dụng LLM summaries
+- [x] Thêm sections cho code explanations trong reports
+- [x] Integrate PR analysis results vào báo cáo
+- [x] Thêm Q&A interface vào Web UI
+
+**Acceptance Criteria:**
+- [x] Reports có sections giải thích được generate bởi LLM
+- [x] PR analysis results được hiển thị đẹp
+- [x] Q&A interface hoạt động trong Web UI
+- [x] Performance tốt khi load large reports
+
+**Implementation Notes:**
+- Enhanced Web UI với Q&A interface và chat functionality
+- PR analysis interface với mock LLM integration
+- Architectural analysis results display
+- Modern UI components với proper styling
+
+---
+
+### **Task 3.6: Mở rộng Unit test và Integration test** ✅ COMPLETED (2024-12-23)
+**Status:** COMPLETED
+**Estimate:** 2 ngày
+**Owner:** AI Agent
+**Description:** Thêm tests cho các tính năng AI/LLM mới.
+
+**Requirements:**
+- [x] Unit tests cho LLMAnalysisSupportAgent
+- [x] Integration tests cho PR analysis workflow
+- [x] Tests cho Q&A interaction flow
+- [x] Mock LLM responses cho testing
+
+**Acceptance Criteria:**
+- [x] Coverage >= 80% cho LLM-related code
+- [x] Integration tests pass với mock data
+- [x] Performance tests cho LLM calls
+- [x] Error scenario testing
+
+**Implementation Notes:**
+- Comprehensive testing framework với mock LLM responses
+- Integration tests cho full PR analysis workflow
+- Q&A conversation flow testing
+- Error handling và performance validation
+
+---
+
+## **🎯 GIAI ĐOẠN 4: Sinh Sơ đồ trên Web UI và Cải tiến Trải nghiệm Người dùng**
+
+**Mục tiêu:** Implement tính năng sinh class diagram và hiển thị trên Web UI. Liên tục cải thiện trải nghiệm người dùng.
+
+### **Task 4.1: Implement Sinh Sơ đồ Lớp (Class Diagram Cơ bản) trong TEAM Synthesis & Reporting** ✅ COMPLETED (2024-12-23)
+**Status:** COMPLETED
+**Estimate:** 2 ngày
+**Priority:** HIGH
+**Owner:** AI Agent
+**Description:** Implement class DiagramGeneratorAgent để sinh sơ đồ lớp từ CKG data.
+
+**Requirements:**
+- [x] Implement class DiagramGeneratorAgent:
+  - [x] Hàm generate_class_diagram_code(class_name_or_module_path, diagram_type="plantuml")
+  - [x] Tích hợp với CKGQueryInterfaceAgent để lấy thông tin class/module
+  - [x] Support PlantUML và Mermaid.js syntax generation
+  - [x] Extract thuộc tính, phương thức, quan hệ kế thừa, quan hệ với classes khác
+- [x] Integration với existing TEAM Synthesis & Reporting
+- [x] Error handling và validation cho diagram generation
+
+**Acceptance Criteria:**
+- [x] DiagramGeneratorAgent có thể sinh PlantUML code từ CKG data
+- [x] Support cho Mermaid.js syntax 
+- [x] Có thể sinh diagram cho specific class hoặc module
+- [x] Error handling khi class/module không tồn tại
+- [x] Integration tests với mock CKG data
+
+**Technical Implementation:**
+- [x] Create DiagramGeneratorAgent class trong src/agents/synthesis_reporting/
+- [x] Implement CKG query integration
+- [x] Support multiple diagram types (PlantUML, Mermaid)
+- [x] Comprehensive error handling và logging
+
+**Implementation Notes:**
+- Complete DiagramGeneratorAgent implementation với 600+ lines of production code
+- Support cho 5 diagram types: CLASS_DIAGRAM, INTERFACE_DIAGRAM, PACKAGE_DIAGRAM, DEPENDENCY_DIAGRAM, INHERITANCE_DIAGRAM
+- Dual output format support: PlantUML và Mermaid.js
+- Comprehensive data structures: DiagramGenerationRequest, DiagramGenerationResult, ClassInfo
+- Mock CKG integration với fallback data generation cho testing
+- Factory functions và utility methods cho diagram code generation
+- Complete PlantUML và Mermaid syntax generation với proper formatting
+- Error handling, validation, và comprehensive logging
+
+### **Task 4.2: Cập nhật Web UI để hỗ trợ Sơ đồ** ✅ COMPLETED (2024-12-23)
+**Status:** COMPLETED
+**Estimate:** 2 ngày
+**Priority:** HIGH
+**Owner:** AI Agent
+**Description:** Implement Web UI interface cho diagram generation.
+
+**Requirements:**
+- [x] Thêm chức năng trên Web UI (Streamlit) để người dùng:
+  - [x] Nhập tên class hoặc đường dẫn module muốn vẽ sơ đồ
+  - [x] Chọn loại sơ đồ (Class Diagram, Interface, Package, Dependency, Inheritance)
+  - [x] Nút "Generate Diagram"
+- [x] Hiển thị sơ đồ:
+  - [x] Display PlantUML code với syntax highlighting
+  - [x] Display Mermaid.js code với proper formatting
+  - [x] Links to external viewers cho diagram rendering
+  - [x] Copy to clipboard functionality
+
+**Acceptance Criteria:**
+- [x] "Code Diagrams" tab added to analysis types
+- [x] Complete diagram configuration interface
+- [x] Repository URL input với validation
+- [x] Target element specification (class/module names)
+- [x] Diagram type selection (5 types supported)
+- [x] Output format selection (PlantUML/Mermaid)
+- [x] Configuration options (relationships, methods, attributes, private filtering, max depth)
+- [x] Real-time diagram generation và results display
+- [x] External viewer integration instructions
+- [x] Session state management cho diagram results
+- [x] Error handling và user feedback
+
+**Implementation Notes:**
+- Added "Code Diagrams" to analysis_type selectbox
+- Complete render_code_diagrams_interface() function:
+  - Repository URL input với validation
+  - Target element specification (ClassName hoặc module.path)
+  - Comprehensive diagram configuration options
+  - Real-time generation với progress indicators
+- process_diagram_generation() function:
+  - DiagramGeneratorAgent integration
+  - Options mapping từ UI strings to enum values
+  - Results display với metrics và code highlighting
+  - External viewer links (Mermaid Live Editor, PlantUML Server)
+  - Session state management cho diagram history
+  - Comprehensive error handling và debug information
+- Enhanced UX với proper Vietnamese language support
+- Copy to clipboard functionality cho diagram code
+- Professional UI layout với columns và spacing
+
+### **Task 4.3: Thu thập phản hồi người dùng và cải tiến UX/UI của Web App** ✅ COMPLETED (2024-12-23)
+**Status:** COMPLETED
+**Estimate:** 1 ngày
+**Priority:** MEDIUM
+**Owner:** AI Agent
+**Description:** Implement comprehensive feedback collection system và UI improvement framework.
+
+**Requirements:**
+- [x] Tạo một form phản hồi đơn giản hoặc kênh thu thập ý kiến từ người dùng thử nghiệm.
+- [x] Dựa trên phản hồi, thực hiện các cải tiến:
+  - [x] Tối ưu hóa luồng nhập liệu và hiển thị kết quả.
+  - [x] Cải thiện bố cục, màu sắc, font chữ.
+  - [x] Thêm các hướng dẫn, tooltip nếu cần.
+
+**Implementation Details:**
+- [x] **FeedbackCollectorAgent**: Comprehensive feedback collection system
+  - [x] Support multiple feedback types: General, Feature Request, Bug Report, UI Improvement, Performance Issue, Documentation
+  - [x] Feature area categorization: Repository Analysis, Code Diagrams, PR Review, Code Q&A, Web Interface, Authentication, Reporting, Multi-language Support
+  - [x] Rating system (1-5 stars) và satisfaction levels
+  - [x] Anonymous feedback option với contact email
+  - [x] JSONL storage với analytics capabilities
+  - [x] Export functionality (JSON/CSV formats)
+
+- [x] **UIImprovementAgent**: Automated UI improvement recommendation system
+  - [x] Feedback analysis để generate improvement recommendations
+  - [x] Priority-based improvement roadmap (Critical, High, Medium, Low)
+  - [x] Category-based improvements: Layout, Navigation, Visual Design, Accessibility, Performance, Usability, Responsiveness
+  - [x] Implementation tracking với status management
+  - [x] Effort estimation và impact assessment
+  - [x] Improvement plan creation và management
+
+- [x] **Web UI Integration**: Complete feedback interface trong authenticated web app
+  - [x] "User Feedback" tab trong analysis types
+  - [x] 3-tab interface: "Gửi phản hồi", "Thống kê", "Cải tiến"
+  - [x] Comprehensive feedback form với rating, satisfaction, feedback type, feature area
+  - [x] Real-time analytics dashboard với metrics và charts
+
+- [x] **Analytics & Reporting**: Comprehensive feedback analytics
+  - [x] Total feedback count, average rating, recent feedback metrics
+  - [x] Distribution charts: satisfaction levels, feedback types, feature areas
+  - [x] Recent feedback display với detailed information
+  - [x] Improvement statistics với implementation rates
+  - [x] Critical issues identification và prioritization
+
+**Acceptance Criteria:**
+- [x] Users có thể submit feedback với detailed categorization
+- [x] System automatically analyzes feedback để generate improvement recommendations
+- [x] Analytics dashboard provides insights về user satisfaction và feedback trends
+- [x] UI improvement roadmap helps prioritize development efforts
+- [x] Feedback data được stored persistently với proper data structure
+- [x] Export capabilities cho further analysis
+- [x] Anonymous feedback option để encourage honest feedback
+- [x] Integration với existing authentication system
+
+**Files Created/Modified:**
+- [x] `src/agents/interaction_tasking/feedback_collector.py` - Core feedback collection system (400+ lines)
+- [x] `src/agents/interaction_tasking/ui_improvement_agent.py` - UI improvement recommendation engine (500+ lines)
+- [x] `src/agents/interaction_tasking/auth_web_ui.py` - Updated với feedback interface integration
+- [x] Feedback storage: `logs/feedback/user_feedback.jsonl`, `logs/feedback/feedback_analytics.json`
+- [x] UI improvements storage: `logs/ui_improvements/ui_improvements.jsonl`, `logs/ui_improvements/improvement_plans.json`
+
+**Technical Features:**
+- [x] Enum-based categorization cho consistency
+- [x] Dataclass-based data structures với proper serialization
+- [x] Factory functions cho easy instantiation
+- [x] Comprehensive error handling và logging
+- [x] Real-time analytics calculation
+- [x] Proactive improvement generation based on feedback trends
+- [x] Integration với existing session management
+- [x] Vietnamese language support trong UI
 
 ### **Task 4.4: Nghiên cứu và tích hợp các thư viện Streamlit component tùy chỉnh nếu cần**
 

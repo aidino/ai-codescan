@@ -5,54 +5,34 @@ AI CodeScan - Interaction & Tasking Module
 Module xử lý tương tác người dùng và khởi tạo tác vụ.
 """
 
-from .user_intent_parser import (
-    UserIntentParserAgent,
-    IntentType,
-    UserIntent,
-    ParsedIntent
-)
-
-from .task_initiation import (
-    TaskInitiationAgent,
-    TaskType,
-    TaskRequest,
-    TaskContext,
-    InitiatedTask
-)
-
+from .user_intent_parser import UserIntentParserAgent
+from .task_initiation import TaskInitiationAgent
 from .dialog_manager import DialogManagerAgent
-from .history_manager import HistoryManagerAgent
+from .history_manager import HistoryManager
 from .pat_handler import PATHandlerAgent
-
-from .qa_interaction import (
-    QAInteractionAgent,
-    QAMessage,
-    QAConversation,
-    QAAnswer
-)
+from .qa_interaction import QAInteractionAgent
+from .presentation_agent import PresentationAgent
+from .feedback_collector import FeedbackCollectorAgent, UIImprovementAgent
 
 __all__ = [
     # Intent Parsing
     'UserIntentParserAgent',
-    'IntentType',
-    'UserIntent',
-    'ParsedIntent',
     
     # Task Initiation
     'TaskInitiationAgent',
-    'TaskType',
-    'TaskRequest', 
-    'TaskContext',
-    'InitiatedTask',
     
     # Dialog & History Management
     'DialogManagerAgent',
-    'HistoryManagerAgent',
+    'HistoryManager',
     'PATHandlerAgent',
     
     # Q&A Interaction
     'QAInteractionAgent',
-    'QAMessage',
-    'QAConversation',
-    'QAAnswer'
+    
+    # Presentation & UI
+    'PresentationAgent',
+    
+    # Feedback & Improvement
+    'FeedbackCollectorAgent',
+    'UIImprovementAgent'
 ]

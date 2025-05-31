@@ -30,6 +30,9 @@ from .ckg_query_interface import (
     ConnectionConfig
 )
 
+# Main CKG Operations Agent (aggregator)
+from .ckg_operations_agent import CKGOperationsAgent
+
 # Java support
 from .java_parser import JavaParserAgent, JavaNode, JavaParseInfo
 
@@ -37,6 +40,9 @@ from .java_parser import JavaParserAgent, JavaNode, JavaParseInfo
 from .dart_parser import DartParserAgent, DartNode, DartParseInfo
 
 __all__ = [
+    # Main Agent
+    'CKGOperationsAgent',
+    
     # Schema
     'NodeType',
     'RelationshipType', 

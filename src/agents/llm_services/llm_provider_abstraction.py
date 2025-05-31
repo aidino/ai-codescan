@@ -222,10 +222,38 @@ class MockProvider(LLMProvider):
 
 # Factory functions
 def create_openai_provider(api_key: str) -> OpenAIProvider:
-    """Create OpenAI provider."""
+    """Create OpenAI provider instance."""
     return OpenAIProvider(api_key)
 
 
 def create_mock_provider() -> MockProvider:
-    """Create mock provider."""
-    return MockProvider() 
+    """Create mock provider instance."""
+    return MockProvider()
+
+
+def create_system_message(content: str, metadata: Dict[str, Any] = None) -> LLMMessage:
+    """Create system message."""
+    return LLMMessage(role="system", content=content, metadata=metadata or {})
+
+
+def create_user_message(content: str, metadata: Dict[str, Any] = None) -> LLMMessage:
+    """Create user message."""
+    return LLMMessage(role="user", content=content, metadata=metadata or {})
+
+
+def create_assistant_message(content: str, metadata: Dict[str, Any] = None) -> LLMMessage:
+    """Create assistant message."""
+    return LLMMessage(role="assistant", content=content, metadata=metadata or {})
+
+
+def create_provider(provider_type: str, **kwargs) -> LLMProvider:
+    """Factory function to create LLM provider."""
+    if provider_type.lower() == "openai":
+        api_key = kwargs.get("api_key")
+        if not api_key:
+            raise ValueError("OpenAI provider requires api_key")
+        return OpenAIProvider(api_key)
+    elif provider_type.lower() == "mock":
+        return MockProvider()
+    else:
+        raise ValueError(f"Unknown provider type: {provider_type}") 

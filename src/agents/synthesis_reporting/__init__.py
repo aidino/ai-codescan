@@ -19,6 +19,16 @@ from .report_generator import (
     GeneratedReport
 )
 
+from .diagram_generator import (
+    DiagramGeneratorAgent,
+    DiagramType,
+    DiagramFormat,
+    DiagramGenerationRequest,
+    DiagramGenerationResult,
+    ClassInfo,
+    create_diagram_generator
+)
+
 __all__ = [
     # Finding Aggregator
     'FindingAggregatorAgent',
@@ -30,5 +40,14 @@ __all__ = [
     'ReportGeneratorAgent',
     'ReportFormat',
     'ReportMetadata',
-    'GeneratedReport'
+    'GeneratedReport',
+    
+    # Diagram Generator
+    'DiagramGeneratorAgent',
+    'DiagramType',
+    'DiagramFormat',
+    'DiagramGenerationRequest',
+    'DiagramGenerationResult',
+    'ClassInfo',
+    'create_diagram_generator'
 ]

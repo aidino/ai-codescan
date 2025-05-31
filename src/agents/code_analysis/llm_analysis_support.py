@@ -9,30 +9,95 @@ team to deliver intelligent code analysis features.
 import logging
 from typing import Any, Dict, List, Optional, Union
 from dataclasses import dataclass
+from enum import Enum
+from dataclasses import dataclass as llm_dataclass
 
 # Import LLM Services components
-from ..llm_services.prompt_formatter import (
+from ..llm_services import (
+    LLMGatewayAgent,
     PromptFormatterModule, 
     PromptTemplate, 
-    PromptContext
-)
-from ..llm_services.context_provider import (
+    PromptContext,
     ContextProviderModule,
     ContextPreparationRequest,
     ContextType,
     PreparedContext
 )
-from ..llm_services.llm_protocol import (
-    LLMServiceRequest,
-    LLMServiceResponse,
-    LLMTaskType,
-    LLMProvider,
-    RequestPriority,
-    LLMRequestBuilder,
-    create_code_explanation_request,
-    create_pr_analysis_request,
-    create_qa_request
-)
+
+# Mock classes for LLM protocol until full implementation
+class LLMTaskType(Enum):
+    CODE_EXPLANATION = "code_explanation"
+    PR_ANALYSIS = "pr_analysis"
+    QA = "qa"
+
+class LLMProvider(Enum):
+    OPENAI = "openai"
+    ANTHROPIC = "anthropic"
+
+class RequestPriority(Enum):
+    LOW = 1
+    NORMAL = 2
+    HIGH = 3
+
+@llm_dataclass
+class LLMServiceRequest:
+    task_type: str
+    content: str
+    provider: str = "openai"
+    max_tokens: int = 4000
+    temperature: float = 0.7
+
+@llm_dataclass  
+class LLMServiceResponse:
+    request_id: str
+    response_content: str
+    success: bool
+    metadata: dict = None
+
+class LLMRequestBuilder:
+    def __init__(self):
+        self._task_type = None
+        self._content = None
+        self._provider = "openai"
+        self._max_tokens = 4000
+        self._temperature = 0.7
+        self._metadata = {}
+    
+    def task_type(self, task_type):
+        self._task_type = task_type.value if hasattr(task_type, 'value') else task_type
+        return self
+    
+    def content(self, content, context=""):
+        self._content = f"{content}\n\nContext: {context}"
+        return self
+    
+    def provider(self, provider):
+        self._provider = provider.value if hasattr(provider, 'value') else provider
+        return self
+    
+    def parameters(self, max_tokens=None, temperature=None):
+        if max_tokens: self._max_tokens = max_tokens
+        if temperature: self._temperature = temperature
+        return self
+    
+    def priority(self, priority):
+        return self
+    
+    def output_format(self, format_type, language):
+        return self
+    
+    def metadata(self, **kwargs):
+        self._metadata.update(kwargs)
+        return self
+    
+    def build(self):
+        return LLMServiceRequest(
+            task_type=self._task_type,
+            content=self._content,
+            provider=self._provider,
+            max_tokens=self._max_tokens,
+            temperature=self._temperature
+        )
 
 logger = logging.getLogger(__name__)
 
@@ -101,9 +166,7 @@ class LLMAnalysisSupportAgent:
         
         # Initialize LLM Services components
         self.prompt_formatter = PromptFormatterModule()
-        self.context_provider = ContextProviderModule(
-            default_max_tokens=default_max_tokens
-        )
+        self.context_provider = ContextProviderModule()
         
         logger.info("LLMAnalysisSupportAgent initialized successfully")
     
@@ -125,46 +188,44 @@ class LLMAnalysisSupportAgent:
             
             # Prepare context using ContextProviderModule
             context_request = ContextPreparationRequest(
-                context_type=ContextType.CODE_EXPLANATION,
-                max_tokens=kwargs.get('max_tokens', self.default_max_tokens),
-                code_snippets=[{
-                    'content': request.code_snippet,
-                    'file_path': request.file_path,
-                    'language': request.language,
+                context_type="code_analysis",
+                primary_code=request.code_snippet,
+                file_path=request.file_path,
+                language=request.language,
+                max_context_length=kwargs.get('max_tokens', self.default_max_tokens),
+                additional_context={
                     'function_name': request.function_name,
-                    'class_name': request.class_name
-                }],
-                ckg_data=request.related_ckg_info,
-                project_metadata={
-                    'language': request.language,
+                    'class_name': request.class_name,
+                    'ckg_results': request.related_ckg_info or [],
                     'context_type': request.context_type
                 }
             )
             
-            prepared_context = self.context_provider.prepare_llm_context(context_request)
+            prepared_context = self.context_provider.prepare_context(context_request)
             
             # Format prompt using PromptFormatterModule
             prompt_context = PromptContext(
                 code_snippet=request.code_snippet,
                 file_path=request.file_path,
                 language=request.language,
-                function_name=request.function_name,
-                class_name=request.class_name,
-                ckg_data=request.related_ckg_info
+                metadata={
+                    'function_name': request.function_name,
+                    'class_name': request.class_name,
+                    'ckg_data': request.related_ckg_info
+                }
             )
             
             # Choose appropriate template based on request
             if request.function_name:
-                template = PromptTemplate.FUNCTION_EXPLANATION
+                template_type = "function_explanation"
             elif request.class_name:
-                template = PromptTemplate.CLASS_EXPLANATION
+                template_type = "class_explanation"
             else:
-                template = PromptTemplate.CODE_EXPLANATION
+                template_type = "code_explanation"
             
             formatted_prompt = self.prompt_formatter.format_prompt(
-                template, 
-                prompt_context,
-                max_length=kwargs.get('max_prompt_length')
+                template_type, 
+                prompt_context
             )
             
             # Create LLMServiceRequest

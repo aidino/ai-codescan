@@ -50,6 +50,11 @@ class LLMTaskResult:
     llm_response: LLMResponse
     success: bool
     error_message: Optional[str] = None
+    
+    @property
+    def response(self) -> str:
+        """Backward compatibility property for response content."""
+        return self.output_data if isinstance(self.output_data, str) else str(self.output_data)
 
 
 class LLMGatewayAgent:

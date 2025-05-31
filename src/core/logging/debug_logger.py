@@ -315,17 +315,23 @@ class DebugLogger:
             json.dump(summary, f, default=str, indent=2)
 
 
-def debug_trace(stage: str = None):
+def debug_trace(func_or_stage=None):
     """
     Decorator để auto-log function calls.
     
-    Args:
-        stage: Analysis stage để categorize logs
+    Can be used with or without parameters:
+    
+    @debug_trace
+    def some_function():
+        pass
         
-    Usage:
-        @debug_trace(stage="DATA_ACQUISITION")
-        def clone_repository(self, repo_url: str):
-            # function implementation
+    @debug_trace("DATA_ACQUISITION")
+    def some_other_function():
+        pass
+    
+    Args:
+        func_or_stage: Either a function (when used without parentheses) 
+                      or a stage string (when used with parentheses)
     """
     def decorator(func):
         """
@@ -365,6 +371,8 @@ def debug_trace(stage: str = None):
                 # Create temporary debug logger
                 debug_logger = DebugLogger()
             
+            # Set stage if provided
+            stage = func_or_stage if isinstance(func_or_stage, str) else None
             if stage:
                 debug_logger.set_analysis_stage(stage)
             
@@ -396,6 +404,12 @@ def debug_trace(stage: str = None):
                 raise
         
         return wrapper
+    
+    # If called without parentheses (func_or_stage is the actual function)
+    if callable(func_or_stage):
+        return decorator(func_or_stage)
+    
+    # If called with parentheses (func_or_stage is the stage string or None)
     return decorator
 
 
