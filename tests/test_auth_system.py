@@ -24,7 +24,7 @@ from src.core.auth import (
     UserRole
 )
 
-from src.agents.interaction_tasking.history_manager import SessionType, SessionStatus
+from src.core.auth.session_manager import SessionType, SessionStatus
 
 
 class TestDatabaseManager:

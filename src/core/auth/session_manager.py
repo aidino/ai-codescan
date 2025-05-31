@@ -8,14 +8,35 @@ Replaces the original HistoryManager với multi-user functionality.
 
 import json
 import uuid
+import sys
+from pathlib import Path
 from datetime import datetime
 from typing import List, Dict, Any, Optional
 from dataclasses import dataclass, asdict
+from enum import Enum
 from loguru import logger
+
+# Add paths for imports
+src_path = Path(__file__).parent.parent.parent
+if str(src_path) not in sys.path:
+    sys.path.insert(0, str(src_path))
 
 from .database import DatabaseManager
 from .user_manager import User
-from ..interaction_tasking.history_manager import SessionType, SessionStatus
+
+# Define enums locally to avoid import issues
+class SessionType(Enum):
+    """Type of analysis session."""
+    REPOSITORY_ANALYSIS = "repository_analysis"
+    PR_REVIEW = "pr_review"
+    CODE_QNA = "code_qna"
+
+class SessionStatus(Enum):
+    """Status of session."""
+    IN_PROGRESS = "in_progress"
+    COMPLETED = "completed"
+    ERROR = "error"
+    CANCELLED = "cancelled"
 
 
 @dataclass

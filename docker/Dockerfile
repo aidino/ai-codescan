@@ -33,17 +33,30 @@ RUN python -c "import git; print('✅ gitpython installed successfully')"
 COPY src/ ./src/
 COPY scripts/ ./scripts/
 
+# Create startup script
+RUN echo '#!/bin/bash\n\
+echo "🔐 Starting AI CodeScan Authenticated Web Interface..."\n\
+echo "📍 URL: http://localhost:8501"\n\
+echo "👤 Default admin: username=admin, password=admin123456"\n\
+echo "⚠️  Please change default password after first login!"\n\
+\n\
+# Initialize authentication database\n\
+python scripts/setup_auth_database.py init || true\n\
+\n\
+# Start authenticated web interface on port 8501\n\
+python -m streamlit run src/agents/interaction_tasking/auth_web_ui.py --server.port=8501 --server.address=0.0.0.0\n' > /app/start.sh && chmod +x /app/start.sh
+
 # Change ownership to app user
 RUN chown -R app:app /app
 
 # Switch to non-root user
 USER app
 
-# Health check
+# Health check for authenticated interface only
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD curl -f http://localhost:8501/_stcore/health || exit 1
 
-# Expose Streamlit port
+# Expose only authenticated interface port
 EXPOSE 8501
 
 # Set environment variables
@@ -52,5 +65,5 @@ ENV STREAMLIT_SERVER_HEADLESS=true
 ENV STREAMLIT_SERVER_ENABLE_CORS=false
 ENV STREAMLIT_SERVER_ENABLE_XSRF_PROTECTION=false
 
-# Run Streamlit application
-CMD ["python", "-m", "streamlit", "run", "src/agents/interaction_tasking/web_ui.py", "--server.port=8501", "--server.address=0.0.0.0"] 
+# Run startup script
+CMD ["/app/start.sh"] 

@@ -91,7 +91,7 @@ def validate_performance_config() -> bool:
 
 def main():
     """Main validation function."""
-    print("🔍 AI CodeScan Environment Validation")
+    print("🤖 AI CodeScan Environment Validation")
     print("=" * 50)
     
     # Load .env file if it exists

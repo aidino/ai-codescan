@@ -130,7 +130,7 @@ Sau khi setup, bạn sẽ có các users sau:
 
 ### Header (Sau Login)
 ```
-🔍 AI CodeScan    |    Xin chào, admin 👋    |    🚪 Đăng xuất
+🤖 AI CodeScan    |    Xin chào, admin 👋    |    🚪 Đăng xuất
                   |    Role: admin           |    (button xanh)
 ```
 

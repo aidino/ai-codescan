@@ -16,8 +16,8 @@ import streamlit as st
 
 # Configure page FIRST (must be first Streamlit command)
 st.set_page_config(
-    page_title="AI CodeScan - Authenticated",
-    page_icon="🔍",
+    page_title="🤖 AI CodeScan - Authenticated",
+    page_icon="🤖",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -37,13 +37,13 @@ from core.auth import (
     UserCredentials,
     UserRole
 )
+from core.auth.session_manager import SessionType, SessionStatus
 
 # Import existing components
 from agents.interaction_tasking.user_intent_parser import UserIntentParserAgent
 from agents.interaction_tasking.dialog_manager import DialogManagerAgent
 from agents.interaction_tasking.task_initiation import TaskInitiationAgent
 from agents.interaction_tasking.presentation import PresentationAgent
-from agents.interaction_tasking.history_manager import SessionType, SessionStatus
 
 
 def initialize_auth_system():
@@ -118,153 +118,365 @@ def check_authentication():
 
 
 def render_login_page():
-    """Render login/register page."""
-    st.markdown("# 🔍 AI CodeScan")
-    st.markdown("### AI-powered Code Review Assistant với Authentication")
+    """Render login/register page với improved UI."""
+    # Enhanced CSS for better styling and responsive design
+    st.markdown("""
+        <style>
+        .login-container {
+            max-width: 500px;
+            margin: 0 auto;
+            padding: 2rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+            color: white;
+            margin-top: 2rem;
+            margin-bottom: 2rem;
+        }
+        .login-form {
+            background: white;
+            padding: 2rem;
+            border-radius: 15px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+            color: #333;
+        }
+        .login-title {
+            text-align: center;
+            color: white;
+            margin-bottom: 0.5rem;
+            font-size: 2.5rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        .login-subtitle {
+            text-align: center;
+            color: rgba(255,255,255,0.9);
+            margin-bottom: 2rem;
+            font-size: 1.1rem;
+        }
+        
+        /* Fix Streamlit tabs styling issues */
+        .stTabs > div > div > div > div {
+            padding: 1.5rem;
+            background: white;
+            border-radius: 15px;
+            margin-top: 1rem;
+            box-shadow: inset 0 2px 5px rgba(0,0,0,0.05);
+        }
+        
+        /* Fix tab-highlight overlapping tab-border */
+        .st-c2.st-c3.st-c4.st-c5.st-c6.st-c7.st-cy.st-c9.st-cq.st-e6.st-e7 {
+            z-index: 1 !important;
+            bottom: 1px !important;
+        }
+        
+        /* Ensure tab borders are visible */
+        [data-baseweb="tab-border"] {
+            z-index: 2 !important;
+        }
+        
+        /* Tab styling improvements */
+        .stTabs [data-baseweb="tab-list"] {
+            gap: 8px;
+            background: transparent;
+            border-bottom: 2px solid #e1e5e9;
+        }
+        
+        .stTabs [data-baseweb="tab"] {
+            height: auto;
+            white-space: nowrap;
+            padding: 12px 24px;
+            border-radius: 8px 8px 0 0;
+            background: #f8f9fa;
+            border: 2px solid #e1e5e9;
+            border-bottom: none;
+            color: #495057;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        .stTabs [data-baseweb="tab"]:hover {
+            background: #e9ecef;
+            color: #343a40;
+        }
+        
+        .stTabs [aria-selected="true"] {
+            background: white !important;
+            color: #667eea !important;
+            border-color: #667eea !important;
+            border-bottom: 2px solid white !important;
+            margin-bottom: -2px !important;
+            z-index: 3 !important;
+        }
+        
+        /* Tab highlight fixes */
+        [data-baseweb="tab-highlight"] {
+            display: none !important;
+        }
+        
+        /* Input field improvements */
+        .stTextInput > div > div > input {
+            border-radius: 10px;
+            border: 2px solid #e1e5e9;
+            padding: 0.75rem;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+        .stTextInput > div > div > input:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        /* Button styling */
+        .stButton > button {
+            border-radius: 10px;
+            height: 3rem;
+            font-size: 1.1rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        .stButton > button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        
+        /* Form improvements */
+        .stForm {
+            border: none;
+            background: transparent;
+        }
+        
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .login-container {
+                margin: 1rem;
+                padding: 1.5rem;
+            }
+            .login-title {
+                font-size: 2rem;
+            }
+            .stTabs > div > div > div > div {
+                padding: 1rem;
+            }
+        }
+        
+        /* Success/Error message styling */
+        .stAlert {
+            border-radius: 10px;
+            border: none;
+            margin: 1rem 0;
+        }
+        
+        /* Demo accounts expander styling */
+        .streamlit-expanderHeader {
+            background: linear-gradient(90deg, #f8f9fa, #e9ecef);
+            border-radius: 10px;
+            margin-top: 2rem;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+    
+    # Center the login form với responsive layout
+    col1, col2, col3 = st.columns([0.5, 3, 0.5])
+    
+    with col2:
+        st.markdown('<div class="login-container">', unsafe_allow_html=True)
+        
+        # Title and subtitle
+        st.markdown('<h1 class="login-title">🤖 AI CodeScan</h1>', unsafe_allow_html=True)
+        st.markdown('<p class="login-subtitle">AI-powered Code Review Assistant</p>', unsafe_allow_html=True)
+        
+        # Create tabs for login và register
+        login_tab, register_tab = st.tabs(["🔑 Đăng nhập", "📝 Đăng ký"])
+        
+        with login_tab:
+            render_login_form()
+        
+        with register_tab:
+            render_register_form()
+        
+        st.markdown('</div>', unsafe_allow_html=True)
+    
+    # Demo accounts info (outside container for better spacing)
     st.markdown("---")
-    
-    # Create tabs for login và register
-    login_tab, register_tab = st.tabs(["🔑 Đăng nhập", "📝 Đăng ký"])
-    
-    with login_tab:
-        render_login_form()
-    
-    with register_tab:
-        render_register_form()
+    with st.expander("🔑 Demo Accounts để Testing", expanded=False):
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            st.markdown("""
+            **👨‍💼 Admin Account**
+            - **Username:** `admin`
+            - **Password:** `admin123456`
+            - **Role:** Administrator
+            """)
+        
+        with col2:
+            st.markdown("""
+            **👤 Test User**
+            - **Username:** `test_user`
+            - **Password:** `testpassword`
+            - **Role:** User
+            """)
+        
+        with col3:
+            st.markdown("""
+            **🎮 Demo User**
+            - **Username:** `demo`
+            - **Password:** `demopassword`
+            - **Role:** User
+            """)
+        
+        st.info("💡 **Lưu ý:** Đây là accounts demo cho testing. Trong production, hãy thay đổi password mặc định!")
 
 
 def render_login_form():
-    """Render login form."""
-    st.markdown("### 🔑 Đăng nhập")
-    
-    with st.form("login_form"):
-        username_or_email = st.text_input(
-            "Username hoặc Email",
-            placeholder="Nhập username hoặc email"
-        )
+    """Render improved login form."""
+    with st.container():
+        st.markdown("### 🔑 Đăng nhập hệ thống")
+        st.markdown("---")
         
-        password = st.text_input(
-            "Password",
-            type="password",
-            placeholder="Nhập password"
-        )
-        
-        col1, col2 = st.columns([1, 2])
-        
-        with col1:
-            submit = st.form_submit_button("🔑 Đăng nhập", type="primary", use_container_width=True)
-        
-        if submit:
-            if not username_or_email or not password:
-                st.error("⚠️ Vui lòng nhập đầy đủ thông tin!")
-                return
-            
-            # Authenticate user
-            credentials = UserCredentials(
-                username_or_email=username_or_email,
-                password=password
+        with st.form("login_form", clear_on_submit=False):
+            # Input fields với better spacing
+            username_or_email = st.text_input(
+                "👤 Username hoặc Email",
+                placeholder="Nhập username hoặc email",
+                help="Bạn có thể sử dụng username hoặc email để đăng nhập"
             )
             
-            result = st.session_state.auth_service.login(credentials)
+            password = st.text_input(
+                "🔒 Password",
+                type="password",
+                placeholder="Nhập password",
+                help="Nhập password của bạn"
+            )
             
-            if result.success:
-                st.session_state.authenticated = True
-                st.session_state.current_user = result.user
-                st.session_state.session_token = result.session_token
+            # Submit button với full width
+            st.markdown("<br>", unsafe_allow_html=True)
+            submit = st.form_submit_button("🔑 Đăng nhập", type="primary", use_container_width=True)
+            
+            if submit:
+                if not username_or_email or not password:
+                    st.error("⚠️ Vui lòng nhập đầy đủ thông tin!")
+                    return
                 
-                st.success(f"✅ Đăng nhập thành công! Chào mừng {result.user.username}")
-                st.rerun()
-            else:
-                st.error(f"❌ Đăng nhập thất bại: {result.error_message}")
+                # Add loading spinner
+                with st.spinner("Đang xác thực..."):
+                    # Authenticate user
+                    credentials = UserCredentials(
+                        username_or_email=username_or_email,
+                        password=password
+                    )
+                    
+                    result = st.session_state.auth_service.login(credentials)
+                    
+                    if result.success:
+                        st.session_state.authenticated = True
+                        st.session_state.current_user = result.user
+                        st.session_state.session_token = result.session_token
+                        
+                        st.success(f"✅ Đăng nhập thành công! Chào mừng {result.user.username}")
+                        st.balloons()
+                        time.sleep(1)
+                        st.rerun()
+                    else:
+                        st.error(f"❌ Đăng nhập thất bại: {result.error_message}")
 
 
 def render_register_form():
-    """Render registration form."""
-    st.markdown("### 📝 Đăng ký tài khoản mới")
-    
-    with st.form("register_form"):
-        username = st.text_input(
-            "Username",
-            placeholder="Chọn username (3-50 ký tự)"
-        )
+    """Render improved registration form."""
+    with st.container():
+        st.markdown("### 📝 Tạo tài khoản mới")
+        st.markdown("---")
         
-        email = st.text_input(
-            "Email",
-            placeholder="Nhập địa chỉ email"
-        )
-        
-        password = st.text_input(
-            "Password",
-            type="password",
-            placeholder="Nhập password (tối thiểu 8 ký tự)"
-        )
-        
-        confirm_password = st.text_input(
-            "Xác nhận Password",
-            type="password",
-            placeholder="Nhập lại password"
-        )
-        
-        display_name = st.text_input(
-            "Tên hiển thị (tuỳ chọn)",
-            placeholder="Tên hiển thị trong hệ thống"
-        )
-        
-        submit = st.form_submit_button("📝 Đăng ký", type="primary", use_container_width=True)
-        
-        if submit:
-            # Validate input
-            if not username or not email or not password:
-                st.error("⚠️ Vui lòng nhập đầy đủ thông tin bắt buộc!")
-                return
+        with st.form("register_form", clear_on_submit=False):
+            # Input fields với better layout
+            col1, col2 = st.columns(2)
             
-            if password != confirm_password:
-                st.error("⚠️ Password xác nhận không khớp!")
-                return
+            with col1:
+                username = st.text_input(
+                    "👤 Username",
+                    placeholder="3-50 ký tự",
+                    help="Username duy nhất cho tài khoản của bạn"
+                )
             
-            if len(password) < 8:
-                st.error("⚠️ Password phải có ít nhất 8 ký tự!")
-                return
+            with col2:
+                email = st.text_input(
+                    "📧 Email",
+                    placeholder="your@email.com",
+                    help="Email hợp lệ để khôi phục tài khoản"
+                )
             
-            # Create user
-            profile_data = {}
-            if display_name:
-                profile_data["display_name"] = display_name
-            profile_data["created_from"] = "web_ui"
-            
-            request = CreateUserRequest(
-                username=username,
-                email=email,
-                password=password,
-                role=UserRole.USER,
-                profile_data=profile_data
+            password = st.text_input(
+                "🔒 Password",
+                type="password",
+                placeholder="Tối thiểu 8 ký tự",
+                help="Password mạnh với ít nhất 8 ký tự"
             )
             
-            user = st.session_state.user_manager.create_user(request)
+            confirm_password = st.text_input(
+                "🔒 Xác nhận Password",
+                type="password",
+                placeholder="Nhập lại password",
+                help="Nhập lại password để xác nhận"
+            )
             
-            if user:
-                st.success(f"✅ Đăng ký thành công! Tài khoản {username} đã được tạo.")
-                st.info("💡 Bạn có thể đăng nhập bằng tab 'Đăng nhập'")
-            else:
-                st.error("❌ Đăng ký thất bại. Username hoặc email có thể đã tồn tại.")
+            display_name = st.text_input(
+                "✨ Tên hiển thị (tuỳ chọn)",
+                placeholder="Tên hiển thị trong hệ thống",
+                help="Tên này sẽ hiển thị trong interface"
+            )
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            submit = st.form_submit_button("📝 Đăng ký", type="primary", use_container_width=True)
+            
+            if submit:
+                # Validate input
+                if not username or not email or not password:
+                    st.error("⚠️ Vui lòng nhập đầy đủ thông tin bắt buộc!")
+                    return
+                
+                if password != confirm_password:
+                    st.error("⚠️ Password xác nhận không khớp!")
+                    return
+                
+                if len(password) < 8:
+                    st.error("⚠️ Password phải có ít nhất 8 ký tự!")
+                    return
+                
+                if len(username) < 3 or len(username) > 50:
+                    st.error("⚠️ Username phải có 3-50 ký tự!")
+                    return
+                
+                # Add loading spinner
+                with st.spinner("Đang tạo tài khoản..."):
+                    # Create user
+                    profile_data = {}
+                    if display_name:
+                        profile_data["display_name"] = display_name
+                    profile_data["created_from"] = "web_ui"
+                    
+                    request = CreateUserRequest(
+                        username=username,
+                        email=email,
+                        password=password,
+                        role=UserRole.USER,
+                        profile_data=profile_data
+                    )
+                    
+                    user = st.session_state.user_manager.create_user(request)
+                    
+                    if user:
+                        st.success(f"✅ Đăng ký thành công! Tài khoản {username} đã được tạo.")
+                        st.info("💡 Bạn có thể đăng nhập bằng tab 'Đăng nhập'")
+                        st.balloons()
+                    else:
+                        st.error("❌ Đăng ký thất bại. Username hoặc email có thể đã tồn tại.")
 
 
 def render_authenticated_header():
     """Render header for authenticated users."""
-    col1, col2, col3 = st.columns([2, 2, 2])
-    
-    with col1:
-        st.markdown("# 🔍 AI CodeScan")
-    
-    with col2:
-        st.markdown(f"### Xin chào, **{st.session_state.current_user.username}** 👋")
-        st.caption(f"Role: {st.session_state.current_user.role.value}")
-    
-    with col3:
-        # More prominent logout button
-        st.markdown("")  # Add some spacing
-        if st.button("🚪 Đăng xuất", type="primary", use_container_width=True):
-            logout_user()
+    st.markdown("# 🤖 AI CodeScan")
+    st.markdown("### AI-powered Code Review Assistant")
+    st.divider()
 
 
 def logout_user():
@@ -294,105 +506,179 @@ def logout_user():
 def render_authenticated_sidebar():
     """Render sidebar for authenticated users."""
     with st.sidebar:
-        # User profile section
-        st.markdown(f"### 👤 {st.session_state.current_user.username}")
-        st.markdown(f"**Role:** {st.session_state.current_user.role.value}")
+        # Modern user profile section với card design
+        st.markdown("""
+            <div style="
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                padding: 1.5rem;
+                border-radius: 15px;
+                color: white;
+                margin-bottom: 1.5rem;
+                text-align: center;
+                box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+            ">
+                <h2 style="margin: 0; font-size: 1.2rem;">👤 {}</h2>
+                <p style="margin: 0.5rem 0 0 0; opacity: 0.9; font-size: 0.9rem;">
+                    {} • {}
+                </p>
+            </div>
+        """.format(
+            st.session_state.current_user.username,
+            st.session_state.current_user.role.value,
+            "Online"
+        ), unsafe_allow_html=True)
         
-        # Quick logout option in sidebar too
-        if st.button("🚪 Logout", key="sidebar_logout", use_container_width=True, type="secondary"):
+        # Logout button với modern design
+        if st.button("🚪 Đăng xuất", key="sidebar_logout", use_container_width=True, type="secondary"):
             logout_user()
         
-        st.divider()
+        st.markdown("<br>", unsafe_allow_html=True)
         
-        # Navigation
-        st.markdown("### 🧭 Điều hướng")
+        # User Statistics Card
+        stats = st.session_state.session_manager.get_user_session_stats(
+            st.session_state.current_user.id
+        )
         
-        if st.button("📊 Dashboard", use_container_width=True):
-            st.session_state.view_mode = "dashboard"
-            st.rerun()
+        st.markdown("""
+            <div style="
+                background: white;
+                padding: 1.5rem;
+                border-radius: 15px;
+                box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+                border: 1px solid #e1e5e9;
+                margin-bottom: 1.5rem;
+            ">
+                <h3 style="margin: 0 0 1rem 0; color: #495057; font-size: 1rem;">📊 Thống kê</h3>
+        """, unsafe_allow_html=True)
         
-        if st.button("🆕 Scan mới", use_container_width=True):
-            st.session_state.view_mode = "new_session"
-            st.session_state.selected_history_session = None
-            st.rerun()
-        
-        if st.button("💬 Chat mới", use_container_width=True):
-            create_new_chat_session()
-        
-        st.divider()
-        
-        # User sessions history
-        render_user_session_history()
-        
-        st.divider()
-        
-        # User info và settings
-        render_user_info()
-
-
-def render_user_session_history():
-    """Render user's session history."""
-    st.markdown("### 📚 Lịch sử Sessions")
-    
-    # Get user sessions
-    sessions = st.session_state.session_manager.get_user_sessions(
-        st.session_state.current_user.id,
-        limit=10
-    )
-    
-    if not sessions:
-        st.info("Chưa có session nào")
-        return
-    
-    # Group by type
-    scan_sessions = [s for s in sessions if s.session_type == SessionType.REPOSITORY_ANALYSIS]
-    chat_sessions = [s for s in sessions if s.session_type == SessionType.CODE_QNA]
-    
-    # Scan history
-    if scan_sessions:
-        st.markdown("#### 📊 Scans")
-        for session in scan_sessions[:5]:
-            status_icon = "✅" if session.status == SessionStatus.COMPLETED else "🔄"
-            if st.button(
-                f"{status_icon} {session.title}",
-                key=f"scan_{session.session_id}",
-                use_container_width=True
-            ):
-                view_session(session.session_id)
-    
-    # Chat history  
-    if chat_sessions:
-        st.markdown("#### 💬 Chats")
-        for session in chat_sessions[:5]:
-            status_icon = "✅" if session.status == SessionStatus.COMPLETED else "🔄"
-            if st.button(
-                f"{status_icon} {session.title}",
-                key=f"chat_{session.session_id}",
-                use_container_width=True
-            ):
-                view_session(session.session_id)
-
-
-def render_user_info():
-    """Render user information và settings."""
-    st.markdown("### ⚙️ Tài khoản")
-    
-    # User stats
-    stats = st.session_state.session_manager.get_user_session_stats(
-        st.session_state.current_user.id
-    )
-    
-    st.metric("Tổng sessions", stats['total_sessions'])
-    
-    if stats['by_status']:
-        completed = stats['by_status'].get('completed', 0)
-        in_progress = stats['by_status'].get('in_progress', 0)
-        
+        # Metrics in grid layout
         col1, col2 = st.columns(2)
         with col1:
-            st.metric("Hoàn thành", completed)
+            st.metric("Tổng", stats['total_sessions'], label_visibility="visible")
+            scans = stats['by_type'].get('repository_analysis', 0)
+            st.metric("Scans", scans)
+        
         with col2:
-            st.metric("Đang xử lý", in_progress)
+            completed = stats['by_status'].get('completed', 0)
+            st.metric("Hoàn thành", completed)
+            chats = stats['by_type'].get('code_qna', 0)
+            st.metric("Chats", chats)
+        
+        st.markdown("</div>", unsafe_allow_html=True)
+        
+        # Navigation section với modern buttons
+        st.markdown("""
+            <h3 style="color: #495057; font-size: 1rem; margin-bottom: 1rem;">🧭 Điều hướng</h3>
+        """, unsafe_allow_html=True)
+        
+        nav_buttons = [
+            ("📊 Dashboard", "dashboard", "primary" if st.session_state.view_mode == "dashboard" else "secondary"),
+            ("🆕 Scan mới", "new_session", "primary" if st.session_state.view_mode == "new_session" else "secondary"),
+            ("💬 Chat mới", "new_chat", "secondary")
+        ]
+        
+        for label, mode, button_type in nav_buttons:
+            if st.button(label, use_container_width=True, type=button_type, key=f"nav_{mode}"):
+                if mode == "new_chat":
+                    create_new_chat_session()
+                else:
+                    st.session_state.view_mode = mode
+                    if mode == "new_session":
+                        st.session_state.selected_history_session = None
+                    st.rerun()
+        
+        st.markdown("<br>", unsafe_allow_html=True)
+        
+        # Session History với improved design
+        st.markdown("""
+            <h3 style="color: #495057; font-size: 1rem; margin-bottom: 1rem;">📚 Lịch sử gần đây</h3>
+        """, unsafe_allow_html=True)
+        
+        # Get user sessions
+        sessions = st.session_state.session_manager.get_user_sessions(
+            st.session_state.current_user.id,
+            limit=8
+        )
+        
+        if sessions:
+            for i, session in enumerate(sessions):
+                # Determine icon và color based on type và status
+                if session.session_type == SessionType.REPOSITORY_ANALYSIS:
+                    type_icon = "📊"
+                    type_color = "#28a745"
+                else:
+                    type_icon = "💬"
+                    type_color = "#007bff"
+                
+                status_icon = "✅" if session.status == SessionStatus.COMPLETED else "🔄"
+                
+                # Truncate title for better display
+                title = session.title
+                if len(title) > 25:
+                    title = title[:22] + "..."
+                
+                # Create session button với hover effect
+                button_style = """
+                    background: white;
+                    border: 1px solid #e1e5e9;
+                    border-radius: 10px;
+                    padding: 0.75rem;
+                    margin-bottom: 0.5rem;
+                    cursor: pointer;
+                    transition: all 0.3s ease;
+                    text-align: left;
+                    width: 100%;
+                """
+                
+                if st.button(
+                    f"{type_icon} {title}\n{status_icon} {session.status.value}",
+                    key=f"session_{session.session_id}_{i}",
+                    use_container_width=True,
+                    help=f"Created: {session.created_at[:10] if session.created_at else 'Unknown'}"
+                ):
+                    view_session(session.session_id)
+        else:
+            st.markdown("""
+                <div style="
+                    text-align: center;
+                    padding: 2rem 1rem;
+                    background: #f8f9fa;
+                    border-radius: 10px;
+                    color: #6c757d;
+                    border: 2px dashed #dee2e6;
+                ">
+                    <p style="margin: 0; font-size: 0.9rem;">
+                        📝 Chưa có session nào<br>
+                        Bắt đầu bằng cách tạo scan mới!
+                    </p>
+                </div>
+            """, unsafe_allow_html=True)
+        
+        # Quick actions at bottom
+        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown("""
+            <h3 style="color: #495057; font-size: 1rem; margin-bottom: 1rem;">⚡ Thao tác nhanh</h3>
+        """, unsafe_allow_html=True)
+        
+        if st.button("📈 Xem tất cả Sessions", use_container_width=True):
+            st.session_state.view_mode = "all_sessions"
+            st.rerun()
+        
+        # System info section
+        st.markdown("<br><hr>", unsafe_allow_html=True)
+        st.markdown("""
+            <div style="
+                text-align: center;
+                padding: 1rem;
+                background: #f8f9fa;
+                border-radius: 10px;
+                font-size: 0.8rem;
+                color: #6c757d;
+            ">
+                <p style="margin: 0;">🤖 AI CodeScan v1.0</p>
+                <p style="margin: 0;">Powered by LangGraph</p>
+            </div>
+        """, unsafe_allow_html=True)
 
 
 def create_new_chat_session():
@@ -418,72 +704,76 @@ def view_session(session_id: str):
 
 def render_dashboard():
     """Render user dashboard."""
-    st.markdown("## 📊 Dashboard")
+    st.markdown("## 📈 Hoạt động gần đây")
     
-    # User overview
-    col1, col2, col3, col4 = st.columns(4)
-    
+    # Get user stats for recent activity
     stats = st.session_state.session_manager.get_user_session_stats(
         st.session_state.current_user.id
     )
     
-    with col1:
-        st.metric("Tổng Sessions", stats['total_sessions'])
-    
-    with col2:
-        completed = stats['by_status'].get('completed', 0)
-        st.metric("Hoàn thành", completed)
-    
-    with col3:
-        scans = stats['by_type'].get('repository_analysis', 0)
-        st.metric("Repository Scans", scans)
-    
-    with col4:
-        chats = stats['by_type'].get('code_qna', 0) 
-        st.metric("Chat Sessions", chats)
-    
-    st.divider()
-    
     # Recent activity
-    st.markdown("### 📈 Hoạt động gần đây")
-    
     if stats['recent_activity']:
-        for activity in stats['recent_activity']:
+        for i, activity in enumerate(stats['recent_activity']):
             with st.container():
-                col1, col2, col3 = st.columns([3, 1, 1])
+                # Create card-like container for each activity
+                st.markdown(f"""
+                    <div style="
+                        background: white;
+                        padding: 1.5rem;
+                        border-radius: 15px;
+                        box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+                        border: 1px solid #e1e5e9;
+                        margin-bottom: 1rem;
+                    ">
+                """, unsafe_allow_html=True)
+                
+                col1, col2, col3, col4 = st.columns([3, 1, 1, 1])
                 
                 with col1:
                     type_icon = "📊" if activity['type'] == 'repository_analysis' else "💬"
-                    st.markdown(f"{type_icon} **{activity['title']}**")
+                    st.markdown(f"### {type_icon} {activity['title']}")
+                    st.caption(f"Type: {activity['type'].replace('_', ' ').title()}")
                 
                 with col2:
                     status_icon = "✅" if activity['status'] == 'completed' else "🔄"
-                    st.markdown(f"{status_icon} {activity['status']}")
+                    st.markdown(f"**Status**")
+                    st.markdown(f"{status_icon} {activity['status'].title()}")
                 
                 with col3:
                     updated = activity['updated_at'][:10] if activity['updated_at'] else "Unknown"
+                    st.markdown(f"**Date**")
                     st.markdown(f"📅 {updated}")
+                
+                with col4:
+                    st.markdown("")  # Spacing
+                    if st.button("👁️ View", key=f"view_activity_{i}", use_container_width=True):
+                        view_session(activity['session_id'])
+                
+                st.markdown("</div>", unsafe_allow_html=True)
     else:
-        st.info("Chưa có hoạt động nào")
-    
-    # Quick actions
-    st.markdown("### 🚀 Thao tác nhanh")
-    
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        if st.button("📊 Scan Repository mới", use_container_width=True):
-            st.session_state.view_mode = "new_session"
-            st.rerun()
-    
-    with col2:
-        if st.button("💬 Bắt đầu Chat", use_container_width=True):
-            create_new_chat_session()
-    
-    with col3:
-        if st.button("📚 Xem tất cả Sessions", use_container_width=True):
-            st.session_state.view_mode = "all_sessions"
-            st.rerun()
+        # Empty state with nice design
+        st.markdown("""
+            <div style="
+                text-align: center;
+                padding: 3rem;
+                background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+                border-radius: 20px;
+                border: 2px dashed #dee2e6;
+                margin: 2rem 0;
+            ">
+                <h3>🌟 Chưa có hoạt động nào</h3>
+                <p style="color: #6c757d; margin-bottom: 2rem;">
+                    Bắt đầu với việc scan repository đầu tiên của bạn!
+                </p>
+            </div>
+        """, unsafe_allow_html=True)
+        
+        # Quick start actions
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col2:
+            if st.button("🚀 Bắt đầu Scan Repository", type="primary", use_container_width=True):
+                st.session_state.view_mode = "new_session"
+                st.rerun()
 
 
 def render_new_session_interface():
@@ -494,7 +784,7 @@ def render_new_session_interface():
     options = {}
     
     # Call original interface but with user context
-    st.markdown("## 🔍 AI CodeScan - Phân tích Code Thông minh")
+    st.markdown("## 🤖 AI CodeScan - Phân tích Code Thông minh")
     
     # Analysis Type Selection
     st.markdown("### 📋 Chọn loại phân tích")
@@ -913,6 +1203,22 @@ def render_history_view():
                 st.markdown(f"**🤖 AI:** {message.content}")
 
 
+def load_custom_css():
+    """Load custom CSS styles từ file."""
+    try:
+        css_file_path = Path(__file__).parent / "styles.css"
+        if css_file_path.exists():
+            with open(css_file_path, 'r', encoding='utf-8') as f:
+                css_content = f.read()
+            return css_content
+        else:
+            logger.warning(f"CSS file not found: {css_file_path}")
+            return ""
+    except Exception as e:
+        logger.error(f"Error loading CSS file: {str(e)}")
+        return ""
+
+
 def main():
     """Main authenticated Streamlit application."""
     # Initialize authentication system
@@ -920,6 +1226,32 @@ def main():
     
     # Initialize session state
     initialize_session_state()
+    
+    # Load and apply custom CSS styling
+    custom_css = load_custom_css()
+    if custom_css:
+        st.markdown(f"<style>{custom_css}</style>", unsafe_allow_html=True)
+    else:
+        # Fallback CSS nếu file không load được
+        st.markdown("""
+            <style>
+            /* Fallback CSS - Critical tab fixes only */
+            [data-baseweb="tab-highlight"] {
+                display: none !important;
+            }
+            
+            .st-c2.st-c3.st-c4.st-c5.st-c6.st-c7.st-cy.st-c9.st-cq.st-e6.st-e7 {
+                background: transparent !important;
+                border: none !important;
+                box-shadow: none !important;
+                z-index: -1 !important;
+            }
+            
+            [data-baseweb="tab-border"] {
+                z-index: 2 !important;
+            }
+            </style>
+        """, unsafe_allow_html=True)
     
     # Check authentication
     if not check_authentication():

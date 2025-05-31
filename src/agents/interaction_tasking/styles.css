@@ -1,0 +1,434 @@
+/* AI CodeScan - Streamlit Custom Styles */
+
+/* ===== TAB STYLING FIXES ===== */
+
+/* Fix tab-highlight overlapping tab-border */
+.st-c2.st-c3.st-c4.st-c5.st-c6.st-c7.st-cy.st-c9.st-cq.st-e6.st-e7 {
+    z-index: 1 !important;
+    bottom: 1px !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+
+/* Ensure tab borders are visible */
+[data-baseweb="tab-border"] {
+    z-index: 2 !important;
+}
+
+/* Tab highlight fixes - completely hide the problematic element */
+[data-baseweb="tab-highlight"] {
+    display: none !important;
+}
+
+/* Alternative approach for tab highlight */
+div[data-baseweb="tab-highlight"] {
+    visibility: hidden !important;
+    opacity: 0 !important;
+    height: 0 !important;
+    overflow: hidden !important;
+}
+
+/* ===== TAB STYLING IMPROVEMENTS ===== */
+
+.stTabs [data-baseweb="tab-list"] {
+    gap: 8px;
+    background: transparent;
+    border-bottom: 2px solid #e1e5e9;
+}
+
+.stTabs [data-baseweb="tab"] {
+    height: auto;
+    white-space: nowrap;
+    padding: 12px 24px;
+    border-radius: 8px 8px 0 0;
+    background: #f8f9fa;
+    border: 2px solid #e1e5e9;
+    border-bottom: none;
+    color: #495057;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.stTabs [data-baseweb="tab"]:hover {
+    background: #e9ecef;
+    color: #343a40;
+}
+
+.stTabs [aria-selected="true"] {
+    background: white !important;
+    color: #667eea !important;
+    border-color: #667eea !important;
+    border-bottom: 2px solid white !important;
+    margin-bottom: -2px !important;
+    z-index: 3 !important;
+}
+
+.stTabs > div > div > div > div {
+    padding: 1.5rem;
+    background: white;
+    border-radius: 15px;
+    margin-top: 1rem;
+    box-shadow: inset 0 2px 5px rgba(0,0,0,0.05);
+}
+
+/* ===== LOGIN PAGE STYLING ===== */
+
+.login-container {
+    max-width: 500px;
+    margin: 0 auto;
+    padding: 2rem;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 20px;
+    box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+    color: white;
+    margin-top: 2rem;
+    margin-bottom: 2rem;
+}
+
+.login-form {
+    background: white;
+    padding: 2rem;
+    border-radius: 15px;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+    color: #333;
+}
+
+.login-title {
+    text-align: center;
+    color: white;
+    margin-bottom: 0.5rem;
+    font-size: 2.5rem;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+}
+
+.login-subtitle {
+    text-align: center;
+    color: rgba(255,255,255,0.9);
+    margin-bottom: 2rem;
+    font-size: 1.1rem;
+}
+
+/* ===== FORM STYLING ===== */
+
+.stTextInput > div > div > input {
+    border-radius: 10px;
+    border: 2px solid #e1e5e9;
+    padding: 0.75rem;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+}
+
+.stTextInput > div > div > input:focus {
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.stButton > button {
+    border-radius: 10px;
+    height: 3rem;
+    font-size: 1.1rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.stButton > button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+}
+
+.stForm {
+    border: none;
+    background: transparent;
+}
+
+/* ===== SIDEBAR STYLING ===== */
+
+.css-1d391kg {
+    background-color: #f8f9fa;
+}
+
+/* ===== METRIC STYLING ===== */
+
+.metric-container {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 15px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+    border: 1px solid #e1e5e9;
+}
+
+/* ===== RESPONSIVE DESIGN ===== */
+
+@media (max-width: 768px) {
+    .login-container {
+        margin: 1rem;
+        padding: 1.5rem;
+    }
+    
+    .login-title {
+        font-size: 2rem;
+    }
+    
+    .stTabs [data-baseweb="tab"] {
+        padding: 8px 16px;
+        font-size: 0.9rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .login-container {
+        margin: 0.5rem;
+        padding: 1rem;
+    }
+    
+    .login-title {
+        font-size: 1.8rem;
+    }
+    
+    .stTabs [data-baseweb="tab"] {
+        padding: 6px 12px;
+        font-size: 0.8rem;
+    }
+}
+
+/* ===== ADDITIONAL UI IMPROVEMENTS ===== */
+
+/* Smooth animations */
+* {
+    transition: all 0.3s ease;
+}
+
+/* Better scrollbar styling */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}
+
+/* Loading animations */
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+}
+
+.loading {
+    animation: pulse 2s infinite;
+}
+
+/* Success/Error styling */
+.stSuccess {
+    border-radius: 10px;
+}
+
+.stError {
+    border-radius: 10px;
+}
+
+.stWarning {
+    border-radius: 10px;
+}
+
+.stInfo {
+    border-radius: 10px;
+}
+
+/* ===== SIDEBAR STYLING IMPROVEMENTS ===== */
+
+/* Sidebar container */
+.css-1d391kg {
+    background: #f8f9fa;
+    border-right: 1px solid #e1e5e9;
+}
+
+/* Sidebar content */
+.css-1cypcdb {
+    background: transparent;
+}
+
+/* Modern sidebar cards */
+.sidebar-card {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 15px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+    border: 1px solid #e1e5e9;
+    margin-bottom: 1.5rem;
+    transition: all 0.3s ease;
+}
+
+.sidebar-card:hover {
+    box-shadow: 0 8px 25px rgba(0,0,0,0.12);
+    transform: translateY(-2px);
+}
+
+/* User profile gradient card */
+.profile-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    text-align: center;
+    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+}
+
+/* Sidebar buttons improvements */
+.sidebar .stButton > button {
+    border-radius: 10px;
+    border: 1px solid #e1e5e9;
+    background: white;
+    color: #495057;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    margin-bottom: 0.5rem;
+}
+
+.sidebar .stButton > button:hover {
+    background: #f8f9fa;
+    border-color: #667eea;
+    color: #667eea;
+    transform: translateY(-1px);
+}
+
+/* Primary navigation buttons */
+.sidebar .stButton > button[data-baseweb="button"][aria-pressed="true"] {
+    background: #667eea;
+    color: white;
+    border-color: #667eea;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+/* Sidebar metrics styling */
+.sidebar .metric-container {
+    background: white;
+    padding: 1rem;
+    border-radius: 10px;
+    text-align: center;
+    margin-bottom: 0.5rem;
+    border: 1px solid #e1e5e9;
+}
+
+/* ===== DASHBOARD STYLING IMPROVEMENTS ===== */
+
+/* Dashboard activity cards */
+.activity-card {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 15px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+    border: 1px solid #e1e5e9;
+    margin-bottom: 1rem;
+    transition: all 0.3s ease;
+}
+
+.activity-card:hover {
+    box-shadow: 0 8px 25px rgba(0,0,0,0.12);
+    transform: translateY(-2px);
+}
+
+/* Empty state styling */
+.empty-state {
+    text-align: center;
+    padding: 3rem;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-radius: 20px;
+    border: 2px dashed #dee2e6;
+    margin: 2rem 0;
+}
+
+/* Dashboard title improvements */
+.dashboard-title {
+    color: #495057;
+    margin-bottom: 2rem;
+    font-weight: 600;
+}
+
+/* Status indicators */
+.status-completed {
+    color: #28a745;
+    font-weight: 600;
+}
+
+.status-processing {
+    color: #ffc107;
+    font-weight: 600;
+}
+
+.status-error {
+    color: #dc3545;
+    font-weight: 600;
+}
+
+/* ===== RESPONSIVE IMPROVEMENTS ===== */
+
+@media (max-width: 768px) {
+    .sidebar-card {
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+    
+    .activity-card {
+        padding: 1rem;
+        margin-bottom: 0.75rem;
+    }
+    
+    .empty-state {
+        padding: 2rem 1rem;
+    }
+}
+
+/* ===== ANIMATION IMPROVEMENTS ===== */
+
+/* Fade in animation for cards */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.fade-in {
+    animation: fadeInUp 0.6s ease-out;
+}
+
+/* Hover animations for interactive elements */
+.interactive-card {
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.interactive-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 35px rgba(0,0,0,0.15);
+}
+
+/* Loading state animations */
+.loading-shimmer {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+    0% {
+        background-position: -200% 0;
+    }
+    100% {
+        background-position: 200% 0;
+    }
+} 

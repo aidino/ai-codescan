@@ -75,27 +75,27 @@ def review_pr(url: str, pr_id: str, platform: str) -> None:
 
 @cli.command()
 def web() -> None:
-    """Launch the web interface using Streamlit."""
-    logger.info("Starting web interface...")
+    """Launch the authenticated web interface using Streamlit."""
+    logger.info("Starting authenticated web interface...")
     
     try:
         import streamlit.web.cli as st_cli
         import sys
         import os
         
-        # Path to the Streamlit app
+        # Path to the authenticated Streamlit app
         app_path = os.path.join(
             os.path.dirname(__file__), 
             'agents', 
             'interaction_tasking', 
-            'web_ui.py'
+            'auth_web_ui.py'
         )
         
         if not os.path.exists(app_path):
-            click.echo(f"❌ Streamlit app not found at: {app_path}")
+            click.echo(f"❌ Authenticated Streamlit app not found at: {app_path}")
             sys.exit(1)
         
-        # Set up Streamlit arguments
+        # Set up Streamlit arguments - now using port 8501 as the main port
         streamlit_args = [
             'streamlit',
             'run',
@@ -111,6 +111,11 @@ def web() -> None:
         sys.argv = streamlit_args
         
         try:
+            click.echo("🔍 Starting AI CodeScan Authenticated Web UI...")
+            click.echo("📍 URL: http://localhost:8501")
+            click.echo("👤 Default admin: username='admin', password='admin123456'")
+            click.echo("⚠️  Please change default password after first login!")
+            
             # Run Streamlit
             st_cli.main()
         finally:
@@ -121,8 +126,8 @@ def web() -> None:
         click.echo("❌ Streamlit not installed. Please run: pip install -r requirements.txt")
         sys.exit(1)
     except Exception as e:
-        logger.error(f"Failed to start web interface: {e}")
-        click.echo(f"❌ Failed to start web interface: {e}")
+        logger.error(f"Failed to start authenticated web interface: {e}")
+        click.echo(f"❌ Failed to start authenticated web interface: {e}")
         sys.exit(1)
 
 
@@ -146,64 +151,6 @@ def test() -> None:
         sys.exit(exit_code)
     except ImportError:
         click.echo("pytest not installed. Please run: pip install -r requirements.txt")
-        sys.exit(1)
-
-
-@cli.command("auth-web")
-def auth_web() -> None:
-    """Launch the authenticated web interface using Streamlit."""
-    logger.info("Starting authenticated web interface...")
-    
-    try:
-        import streamlit.web.cli as st_cli
-        import sys
-        import os
-        
-        # Path to the authenticated Streamlit app
-        app_path = os.path.join(
-            os.path.dirname(__file__), 
-            'agents', 
-            'interaction_tasking', 
-            'auth_web_ui.py'
-        )
-        
-        if not os.path.exists(app_path):
-            click.echo(f"❌ Authenticated Streamlit app not found at: {app_path}")
-            sys.exit(1)
-        
-        # Set up Streamlit arguments
-        streamlit_args = [
-            'streamlit',
-            'run',
-            app_path,
-            '--server.port=8502',  # Different port để avoid conflict
-            '--server.address=0.0.0.0',
-            '--browser.gatherUsageStats=false',
-            '--logger.level=warning'
-        ]
-        
-        # Replace sys.argv for Streamlit
-        original_argv = sys.argv.copy()
-        sys.argv = streamlit_args
-        
-        try:
-            click.echo("🔍 Starting AI CodeScan Authenticated Web UI...")
-            click.echo("📍 URL: http://localhost:8502")
-            click.echo("👤 Default admin: username='admin', password='admin123456'")
-            click.echo("⚠️  Please change default password after first login!")
-            
-            # Run Streamlit
-            st_cli.main()
-        finally:
-            # Restore original argv
-            sys.argv = original_argv
-            
-    except ImportError:
-        click.echo("❌ Streamlit not installed. Please run: pip install -r requirements.txt")
-        sys.exit(1)
-    except Exception as e:
-        logger.error(f"Failed to start authenticated web interface: {e}")
-        click.echo(f"❌ Failed to start authenticated web interface: {e}")
         sys.exit(1)
 
 

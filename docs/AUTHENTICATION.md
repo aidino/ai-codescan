@@ -196,7 +196,7 @@ auth_service.logout(session_token)
 
 ```python
 from src.core.auth import AuthenticatedSessionManager
-from src.agents.interaction_tasking.history_manager import SessionType
+from src.core.auth.session_manager import SessionType
 
 # Initialize session manager
 session_manager = AuthenticatedSessionManager(db_manager)
@@ -347,65 +347,3 @@ ls -la data/ai_codescan.db
 # Reinitialize database
 python src/main.py setup-auth --db-path data/ai_codescan.db
 ```
-
-**Authentication Failures:**
-```python
-# Enable debug logging
-import logging
-logging.basicConfig(level=logging.DEBUG)
-```
-
-**Session Issues:**
-```bash
-# Check session expiration
-python scripts/setup_auth_database.py list-users
-```
-
-## Migration Guide
-
-### From Anonymous to Authenticated
-1. **Setup Database**: Run authentication setup
-2. **Update Code**: Replace HistoryManager với AuthenticatedSessionManager
-3. **Update UI**: Use auth_web_ui.py instead of web_ui.py
-4. **Data Migration**: Migrate existing sessions to user-scoped sessions
-
-### Upgrading Authentication
-1. **Backup Database**: Create backup trước upgrade
-2. **Run Migrations**: Execute schema updates
-3. **Update Dependencies**: Upgrade authentication libraries
-4. **Test System**: Verify authentication flow
-
-## Contributing
-
-### Development Setup
-```bash
-# Install development dependencies
-pip install -r requirements-dev.txt
-
-# Run tests
-pytest tests/test_auth_system.py
-
-# Code formatting
-black src/core/auth/
-
-# Type checking
-mypy src/core/auth/
-```
-
-### Adding Features
-1. **Design**: Document authentication requirements
-2. **Implement**: Add code với comprehensive tests
-3. **Test**: Ensure security và performance
-4. **Document**: Update authentication documentation
-
-## License
-
-Authentication system follows the same license as AI CodeScan project.
-
-## Support
-
-For authentication-related issues:
-1. Check troubleshooting section
-2. Review test cases for usage examples
-3. Create issue với detailed error information
-4. Include relevant logs và configuration 

@@ -1,4 +1,4 @@
-# AI CodeScan
+# 🤖 AI CodeScan
 
 AI-powered code review assistant với multi-agent architecture
 
@@ -82,7 +82,7 @@ docker-compose up --build -d
 ```
 
 **Access Applications**:
-- 🌐 Web UI: http://localhost:8501
+- 🔐 Authenticated Web UI: http://localhost:8501 (admin/admin123456)
 - 📊 Neo4j Browser: http://localhost:7474 (neo4j/ai_codescan_password)
 
 ### Local Development
@@ -95,7 +95,7 @@ cp .env.example .env
 # 2. Install dependencies
 pip install -r requirements.txt
 
-# 3. Run application
+# 3. Run authenticated web interface
 python src/main.py web
 ```
 
@@ -222,14 +222,16 @@ python src/main.py version
 
 ### Web Interface
 
-1. 🌐 Navigate to http://localhost:8501
-2. 📝 Choose analysis type:
+1. 🔐 Navigate to http://localhost:8501 và login với default admin account
+2. 👤 **Default Login**: username=`admin`, password=`admin123456`
+3. 📝 Choose analysis type:
    - **Repository Review**: Full codebase analysis
    - **PR Review**: Pull request analysis  
    - **Code Q&A**: Interactive code questions
-3. 🔗 Enter repository URL (GitHub, GitLab, BitBucket)
-4. ⚙️ Configure analysis options
-5. 📊 Review results with interactive charts và exports
+4. 🔗 Enter repository URL (GitHub, GitLab, BitBucket)
+5. ⚙️ Configure analysis options
+6. 📊 Review results with interactive charts và exports
+7. 📚 Access your session history và user dashboard
 
 ## 🎯 Supported Languages
 
