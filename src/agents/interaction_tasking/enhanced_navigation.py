@@ -7,7 +7,12 @@ Provides professional sidebar navigation với icons và enhanced functionality.
 """
 
 import streamlit as st
-from streamlit_option_menu import option_menu
+try:
+    from streamlit_option_menu import option_menu
+    OPTION_MENU_AVAILABLE = True
+except ImportError:
+    OPTION_MENU_AVAILABLE = False
+    print("⚠️ streamlit_option_menu not available, using basic navigation")
 from typing import Optional, Dict, Any, Tuple
 from loguru import logger
 
@@ -67,26 +72,36 @@ class EnhancedNavigationAgent:
             
             st.markdown("---")
             
-            # Enhanced navigation menu
-            selected = option_menu(
-                menu_title="Navigation",
-                options=self.menu_config["main_menu"]["options"],
-                icons=self.menu_config["main_menu"]["icons"],
-                menu_icon=self.menu_config["main_menu"]["menu_icon"],
-                default_index=self.menu_config["main_menu"]["default_index"],
-                orientation="vertical",
-                styles={
-                    "container": {"padding": "0!important", "background-color": "#fafafa"},
-                    "icon": {"color": "#1f77b4", "font-size": "18px"}, 
-                    "nav-link": {
-                        "font-size": "16px", 
-                        "text-align": "left", 
-                        "margin":"0px", 
-                        "--hover-color": "#eee"
-                    },
-                    "nav-link-selected": {"background-color": "#1f77b4"},
-                }
-            )
+            # Enhanced navigation menu or fallback
+            if OPTION_MENU_AVAILABLE:
+                selected = option_menu(
+                    menu_title="Navigation",
+                    options=self.menu_config["main_menu"]["options"],
+                    icons=self.menu_config["main_menu"]["icons"],
+                    menu_icon=self.menu_config["main_menu"]["menu_icon"],
+                    default_index=self.menu_config["main_menu"]["default_index"],
+                    orientation="vertical",
+                    styles={
+                        "container": {"padding": "0!important", "background-color": "#fafafa"},
+                        "icon": {"color": "#1f77b4", "font-size": "18px"}, 
+                        "nav-link": {
+                            "font-size": "16px", 
+                            "text-align": "left", 
+                            "margin":"0px", 
+                            "--hover-color": "#eee"
+                        },
+                        "nav-link-selected": {"background-color": "#1f77b4"},
+                    }
+                )
+            else:
+                # Fallback to basic Streamlit radio buttons
+                st.write("**Navigation**")
+                selected = st.radio(
+                    "Chọn tính năng:",
+                    self.menu_config["main_menu"]["options"],
+                    index=self.menu_config["main_menu"]["default_index"],
+                    key="navigation_menu"
+                )
             
             return selected
     

@@ -10,10 +10,11 @@ import sys
 import time
 import uuid
 from pathlib import Path
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from datetime import datetime
 
 import streamlit as st
+import streamlit.components.v1
 
 # Configure page FIRST (must be first Streamlit command)
 st.set_page_config(
@@ -59,7 +60,6 @@ from agents.interaction_tasking.feedback_collector import (
     FeedbackType, 
     FeatureArea, 
     SatisfactionLevel,
-    UIImprovementAgent,
     create_feedback_collector
 )
 from agents.interaction_tasking.ui_improvement_agent import (
@@ -76,6 +76,277 @@ from agents.interaction_tasking.enhanced_navigation import (
 # Fix relative imports - use absolute imports instead
 from core.logging import log_repository_analysis_start, get_debug_logger
 from core.logging import log_repository_analysis_end
+
+# Import các agents cần thiết
+from agents.data_acquisition.git_operations import GitOperationsAgent
+from agents.data_acquisition.language_identifier import LanguageIdentifierAgent
+from agents.data_acquisition.data_preparation import DataPreparationAgent
+from agents.code_analysis.static_analysis_integrator import StaticAnalysisIntegratorAgent
+from agents.code_analysis.architectural_analyzer import ArchitecturalAnalyzerAgent
+from agents.ckg_operations.ckg_operations_agent import CKGOperationsAgent
+from agents.synthesis_reporting.report_generator import ReportGeneratorAgent
+
+# Import the new conversational analysis
+from agents.interaction_tasking.chat_repository_analysis import render_conversational_repository_analysis
+
+
+def perform_real_repository_analysis(repo_url: str, pat: Optional[str], options: Dict[str, Any], debug_logger) -> Dict[str, Any]:
+    """Perform real repository analysis using actual agents."""
+    try:
+        repo_name = repo_url.split('/')[-1] if '/' in repo_url else repo_url
+        
+        # Step 1: Data Acquisition
+        debug_logger.log_step("Starting data acquisition", {"repo_url": repo_url})
+        
+        # Initialize agents
+        git_agent = GitOperationsAgent()
+        lang_agent = LanguageIdentifierAgent()
+        data_prep_agent = DataPreparationAgent()
+        
+        # Clone repository
+        debug_logger.log_step("Cloning repository", {"depth": 1})
+        repo_info = git_agent.clone_repository(repo_url, pat=pat, depth=1)
+        
+        local_path = repo_info.local_path
+        debug_logger.log_data("clone_result", {
+            "local_path": str(local_path),
+            "size_mb": repo_info.size_mb,
+            "file_count": repo_info.file_count,
+            "commit_hash": repo_info.commit_hash
+        })
+        
+        # Step 2: Language Identification
+        debug_logger.log_step("Identifying languages", {"path": str(local_path)})
+        language_profile = lang_agent.identify_language(local_path)
+        
+        # Convert to expected format
+        languages_result = {
+            'languages': {
+                lang_info.name.lower(): {
+                    'file_count': lang_info.file_count,
+                    'line_count': lang_info.total_lines,
+                    'percentage': lang_info.percentage
+                }
+                for lang_info in language_profile.languages
+            },
+            'primary_language': language_profile.primary_language,
+            'frameworks': language_profile.frameworks,
+            'project_type': language_profile.project_type,
+            'confidence_score': language_profile.confidence_score
+        }
+        
+        debug_logger.log_data("language_detection", languages_result)
+        
+        # Step 3: Prepare project data context  
+        project_context = data_prep_agent.prepare_project_context(
+            repo_info=repo_info,
+            language_profile=language_profile,
+            additional_config=options
+        )
+        
+        # Step 4: Code Analysis
+        debug_logger.log_step("Starting code analysis", {"languages": list(languages_result.get('languages', {}).keys())})
+        
+        static_analyzer = StaticAnalysisIntegratorAgent()
+        architectural_analyzer = ArchitecturalAnalyzerAgent()
+        
+        # Run static analysis
+        detected_languages = list(languages_result.get('languages', {}).keys())
+        static_results = static_analyzer.run_multi_language_analysis(local_path, detected_languages)
+        debug_logger.log_data("static_analysis_results", {
+            "total_findings": static_results.get('total_findings', 0),
+            "languages_analyzed": list(static_results.get('results_by_language', {}).keys())
+        })
+        
+        # Run architectural analysis
+        arch_analysis_result = architectural_analyzer.analyze_architecture(local_path)
+        debug_logger.log_data("architectural_analysis", {
+            "circular_deps": len(arch_analysis_result.circular_dependencies),
+            "unused_elements": len(arch_analysis_result.unused_elements),
+            "total_issues": arch_analysis_result.total_issues
+        })
+        
+        # Step 5: CKG Operations (if enabled)
+        ckg_results = {}
+        if options.get('include_ckg', False):
+            debug_logger.log_step("Building Code Knowledge Graph", {})
+            try:
+                # Parse project first
+                parse_result = ckg_agent.parse_project(local_path)
+                if parse_result:
+                    # Build CKG from parse results
+                    build_result = ckg_agent.build_ckg(parse_result)
+                    if build_result:
+                        ckg_results = {
+                            'nodes_created': build_result.nodes_created,
+                            'relationships_created': build_result.relationships_created,
+                            'build_time_seconds': build_result.build_time_seconds,
+                            'status': 'success'
+                        }
+                    else:
+                        ckg_results = {'status': 'failed', 'error': 'CKG build failed'}
+                else:
+                    ckg_results = {'status': 'failed', 'error': 'Project parsing failed'}
+                    
+                debug_logger.log_data("ckg_results", {
+                    "nodes_created": ckg_results.get('nodes_created', 0),
+                    "relationships_created": ckg_results.get('relationships_created', 0)
+                })
+            except Exception as e:
+                debug_logger.log_step("CKG build failed, continuing without CKG", {"error": str(e)})
+                ckg_results = {"error": str(e), "nodes_created": 0, "relationships_created": 0}
+        
+        # Step 6: Generate synthesis results
+        debug_logger.log_step("Synthesizing results", {})
+        
+        # Calculate metrics
+        total_issues = static_results.get('total_findings', 0) + arch_analysis_result.total_issues
+        
+        files_analyzed = static_results.get('total_files_analyzed', 0)
+        
+        lines_of_code = sum(
+            lang_info.get('line_count', 0)
+            for lang_info in languages_result.get('languages', {}).values()
+        )
+        
+        # Calculate quality score based on issues density
+        if files_analyzed > 0:
+            issues_per_file = total_issues / files_analyzed
+            # Quality score inversely related to issues density
+            quality_score = max(20, min(100, 100 - (issues_per_file * 5)))
+        else:
+            quality_score = 85
+        
+        # Aggregate severity counts
+        severity_counts = static_results.get('severity_summary', {
+            'error': 0, 'warning': 0, 'info': 0, 'critical': 0, 'major': 0, 'minor': 0
+        })
+        
+        # Generate summary insights
+        key_issues = []
+        recommendations = []
+        
+        # Analyze static analysis results for insights  
+        for lang, lang_data in static_results.get('results_by_language', {}).items():
+            findings = lang_data.get('findings', [])
+            if findings:
+                # Group by rule and count occurrences
+                rule_counts = {}
+                for finding in findings[:5]:  # Top 5 findings per language
+                    rule = finding.get('rule_id', 'unknown')
+                    msg = finding.get('message', 'Issue detected')
+                    if rule not in rule_counts:
+                        rule_counts[rule] = {'count': 0, 'message': msg}
+                    rule_counts[rule]['count'] += 1
+                
+                # Add top issues to key_issues
+                for rule, data in list(rule_counts.items())[:3]:  # Top 3 rules per language
+                    key_issues.append(f"{lang.title()}: {data['message']} ({data['count']} occurrences)")
+        
+        # Add architectural insights
+        circular_deps = arch_analysis_result.circular_dependencies
+        unused_elements = arch_analysis_result.unused_elements
+        
+        if circular_deps:
+            key_issues.append(f"Phát hiện {len(circular_deps)} circular dependencies")
+        if unused_elements:
+            key_issues.append(f"Tìm thấy {len(unused_elements)} unused public elements")
+        
+        # Generate recommendations
+        if severity_counts.get('error', 0) > 0:
+            recommendations.append("Ưu tiên sửa các lỗi critical để đảm bảo code stability")
+        if circular_deps:
+            recommendations.append("Refactor để loại bỏ circular dependencies")
+        if unused_elements:
+            recommendations.append("Review và cleanup unused code elements")
+        if total_issues > files_analyzed * 2:
+            recommendations.append("Cân nhắc thêm linting tools vào CI/CD pipeline")
+        
+        # Construct final results
+        analysis_results = {
+            'repository': repo_name,
+            'repository_url': repo_url,
+            'analysis_type': 'Repository Review',
+            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            'total_issues': total_issues,
+            'files_analyzed': files_analyzed,
+            'lines_of_code': lines_of_code,
+            'quality_score': int(quality_score),
+            'quality_delta': 0,  # Could be calculated by comparing with previous analysis
+            'severity_counts': severity_counts,
+            'languages': languages_result.get('languages', {}),
+            'summary': {
+                'key_issues': key_issues[:10],  # Limit to top 10
+                'recommendations': recommendations[:5]  # Limit to top 5
+            },
+            'static_analysis_by_language': static_results.get('results_by_language', {}),
+            'architectural_issues': {
+                'circular_dependencies': [
+                    {
+                        'cycle_type': dep.cycle_type,
+                        'cycle': dep.cycle,
+                        'description': dep.description,
+                        'impact': 'Potential maintenance and testing difficulties'
+                    }
+                    for dep in circular_deps
+                ],
+                'unused_elements': [
+                    {
+                        'element_type': elem.element_type,
+                        'element_name': elem.element_name,
+                        'file_path': elem.file_path,
+                        'line_number': elem.line_number,
+                        'reason': elem.reason or 'No usage found in analyzed codebase'
+                    }
+                    for elem in unused_elements
+                ]
+            },
+            'ckg_info': ckg_results,
+            'analysis_duration': f"{int((datetime.now().timestamp() - debug_logger.start_time) if hasattr(debug_logger, 'start_time') else 30)} seconds"
+        }
+        
+        # Cleanup temporary files
+        try:
+            if local_path and Path(local_path).exists():
+                import shutil
+                shutil.rmtree(local_path)
+                debug_logger.log_step("Cleaned up temporary files", {"path": str(local_path)})
+        except Exception as e:
+            debug_logger.log_step("Warning: Failed to cleanup temp files", {"error": str(e)})
+        
+        debug_logger.log_step("Real analysis completed successfully", {
+            "total_issues": total_issues,
+            "quality_score": quality_score,
+            "files_analyzed": files_analyzed
+        })
+        
+        return analysis_results
+        
+    except Exception as e:
+        debug_logger.log_step("Analysis failed", {"error": str(e)})
+        logger.error(f"Repository analysis failed: {str(e)}")
+        
+        # Return error results
+        return {
+            'repository': repo_url.split('/')[-1] if '/' in repo_url else repo_url,
+            'repository_url': repo_url,
+            'analysis_type': 'Repository Review (Failed)',
+            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            'total_issues': 0,
+            'files_analyzed': 0,
+            'lines_of_code': 0,
+            'quality_score': 0,
+            'severity_counts': {},
+            'languages': {},
+            'summary': {
+                'key_issues': [f"Analysis failed: {str(e)}"],
+                'recommendations': ["Check repository URL and access permissions"]
+            },
+            'static_analysis_by_language': {},
+            'architectural_issues': {'circular_dependencies': [], 'unused_elements': []},
+            'error': str(e),
+            'analysis_duration': '0 seconds'
+        }
 
 
 def initialize_auth_system():
@@ -99,6 +370,9 @@ def initialize_auth_system():
 
 def initialize_session_state():
     """Initialize Streamlit session state variables."""
+    # Try to restore authentication from URL params/cookies
+    restore_authentication_state()
+    
     # Authentication state
     if "authenticated" not in st.session_state:
         st.session_state.authenticated = False
@@ -108,6 +382,10 @@ def initialize_session_state():
     
     if "session_token" not in st.session_state:
         st.session_state.session_token = None
+    
+    # Auto-restore session if we have a recent session file
+    if not st.session_state.authenticated:
+        try_restore_from_recent_session()
     
     # PAT Handler initialization
     if "pat_handler" not in st.session_state:
@@ -146,6 +424,180 @@ def initialize_session_state():
     # Enhanced navigation initialization
     if "enhanced_navigation" not in st.session_state:
         st.session_state.enhanced_navigation = create_enhanced_navigation()
+
+
+def restore_authentication_state():
+    """Restore authentication state from session cookies."""
+    try:
+        # Try to get session token from cookies using query params pattern
+        # This is a simple fallback approach
+        
+        # For now, we'll rely on browser session storage if user doesn't close browser
+        # This is a limitation of Streamlit's session management
+        
+        # Check if we're in a new browser session but have URL hash
+        if hasattr(st, 'query_params') and st.query_params:
+            query_params = st.query_params
+            
+            if "token" in query_params:
+                session_token = query_params["token"]
+                
+                # Initialize auth system if not done
+                if "auth_service" not in st.session_state:
+                    initialize_auth_system()
+                
+                # Validate token
+                session_info = st.session_state.auth_service.validate_session(session_token)
+                
+                if session_info:
+                    # Restore authentication state
+                    st.session_state.authenticated = True
+                    st.session_state.current_user = session_info.user
+                    st.session_state.session_token = session_token
+                    
+                    # Clear token from URL for security
+                    st.query_params.clear()
+                    
+                    logger.info(f"Restored authentication for user: {session_info.user.username}")
+                else:
+                    # Invalid token, clear it
+                    st.query_params.clear()
+                    
+    except Exception as e:
+        logger.error(f"Error restoring authentication state: {str(e)}")
+
+
+def persist_authentication_state():
+    """Show user-friendly session info instead of complex persistence."""
+    try:
+        if st.session_state.authenticated and st.session_state.session_token:
+            # Display session info to user
+            session_info = st.session_state.auth_service.validate_session(st.session_state.session_token)
+            if session_info:
+                time_remaining_hours = session_info.time_remaining_seconds / 3600
+                
+                # Show session status in a small info box
+                if time_remaining_hours > 1:
+                    st.info(f"🔐 Session active: {time_remaining_hours:.1f} hours remaining")
+                elif time_remaining_hours > 0:
+                    st.warning(f"⏰ Session expires in {session_info.time_remaining_seconds//60} minutes")
+                else:
+                    st.error("🚨 Session expired - please login again")
+                    logout_user()
+            
+    except Exception as e:
+        logger.error(f"Error checking authentication state: {str(e)}")
+
+
+def try_restore_from_recent_session():
+    """Try to restore authentication from a recent session file."""
+    try:
+        import tempfile
+        import os
+        import json
+        from pathlib import Path
+        
+        # Create a session file path in temp directory
+        temp_dir = Path(tempfile.gettempdir())
+        session_file = temp_dir / "ai_codescan_recent_session.json"
+        
+        if session_file.exists():
+            # Read session file
+            with open(session_file, 'r') as f:
+                session_data = json.load(f)
+            
+            session_token = session_data.get('token')
+            created_time = session_data.get('created_time', 0)
+            
+            # Check if session is recent (within last 1 hour)
+            import time
+            if session_token and (time.time() - created_time) < 3600:  # 1 hour
+                # Initialize auth system if not done
+                if "auth_service" not in st.session_state:
+                    initialize_auth_system()
+                
+                # Validate token
+                session_info = st.session_state.auth_service.validate_session(session_token)
+                
+                if session_info:
+                    # Restore authentication state
+                    st.session_state.authenticated = True
+                    st.session_state.current_user = session_info.user
+                    st.session_state.session_token = session_token
+                    
+                    logger.info(f"Auto-restored session for user: {session_info.user.username}")
+                    return True
+                else:
+                    # Invalid token, remove session file
+                    session_file.unlink(missing_ok=True)
+            else:
+                # Session too old, remove it
+                session_file.unlink(missing_ok=True)
+                
+    except Exception as e:
+        logger.error(f"Error restoring from recent session: {str(e)}")
+    
+    return False
+
+
+def save_recent_session():
+    """Save current session to recent session file."""
+    try:
+        if st.session_state.authenticated and st.session_state.session_token:
+            import tempfile
+            import json
+            import time
+            from pathlib import Path
+            
+            # Create session data
+            session_data = {
+                'token': st.session_state.session_token,
+                'created_time': time.time(),
+                'username': st.session_state.current_user.username
+            }
+            
+            # Save to temp file
+            temp_dir = Path(tempfile.gettempdir())
+            session_file = temp_dir / "ai_codescan_recent_session.json"
+            
+            with open(session_file, 'w') as f:
+                json.dump(session_data, f)
+                
+            logger.info("Recent session saved")
+            
+    except Exception as e:
+        logger.error(f"Error saving recent session: {str(e)}")
+
+
+def clear_recent_session():
+    """Clear recent session file."""
+    try:
+        import tempfile
+        from pathlib import Path
+        
+        temp_dir = Path(tempfile.gettempdir())
+        session_file = temp_dir / "ai_codescan_recent_session.json"
+        session_file.unlink(missing_ok=True)
+        
+        logger.info("Recent session cleared")
+        
+    except Exception as e:
+        logger.error(f"Error clearing recent session: {str(e)}")
+
+
+def clear_session_persistence():
+    """Clear any persisted session data."""
+    try:
+        # Clear query params
+        if hasattr(st, 'query_params'):
+            st.query_params.clear()
+        
+        # Clear recent session file    
+        clear_recent_session()
+            
+        logger.info("Session persistence cleared")
+    except Exception as e:
+        logger.error(f"Error clearing session persistence: {str(e)}")
 
 
 def check_authentication():
@@ -424,6 +876,12 @@ def render_login_form():
                         st.session_state.current_user = result.user
                         st.session_state.session_token = result.session_token
                         
+                        # Save session file for auto-restore
+                        save_recent_session()
+                        
+                        # Persist authentication state for page refresh
+                        persist_authentication_state()
+                        
                         st.success(f"✅ Đăng nhập thành công! Chào mừng {result.user.username}")
                         st.balloons()
                         time.sleep(1)
@@ -548,6 +1006,12 @@ def logout_user():
     st.session_state.chat_messages = []
     st.session_state.view_mode = "dashboard"
     
+    # Clear session persistence from localStorage
+    clear_session_persistence()
+    
+    # Clear URL params to remove persisted session
+    st.query_params.clear()
+    
     st.success("✅ Đăng xuất thành công!")
     st.balloons()  # Add celebratory animation
     time.sleep(1)  # Brief pause to show success message
@@ -646,6 +1110,7 @@ def render_authenticated_sidebar():
             options=[
                 "🏠 Dashboard",
                 "🔍 Repository Analysis", 
+                "🤖 AI Repository Chat",  # New conversational analysis
                 "🔄 Pull Request Review",
                 "💬 Q&A Assistant",
                 "📊 Code Diagrams",
@@ -655,6 +1120,7 @@ def render_authenticated_sidebar():
             icons=[
                 "house", 
                 "search", 
+                "robot",  # New AI chat icon
                 "arrow-repeat", 
                 "chat-text", 
                 "diagram-3", 
@@ -921,7 +1387,7 @@ def render_new_session_interface():
     
     analysis_type = st.selectbox(
         "Loại phân tích",
-        ["Repository Review", "Pull Request Review", "Code Q&A", "Code Diagrams", "User Feedback"],
+        ["Repository Review", "AI Repository Chat", "Pull Request Review", "Code Q&A", "Code Diagrams", "User Feedback"],
         help="Chọn loại phân tích bạn muốn thực hiện"
     )
     
@@ -974,6 +1440,8 @@ def render_new_session_interface():
     # Render appropriate interface based on analysis type
     if analysis_type == "Repository Review":
         render_authenticated_repository_interface(options)
+    elif analysis_type == "AI Repository Chat":
+        render_conversational_repository_analysis()
     elif analysis_type == "Pull Request Review":
         render_authenticated_pr_interface(options)
     elif analysis_type == "Code Q&A":
@@ -1171,6 +1639,9 @@ def process_authenticated_repository_analysis(repo_url: str, pat: Optional[str],
         session_id=f"ui_session_{st.session_state.current_session_id}"
     )
     
+    # Add start time for duration calculation
+    debug_logger.start_time = datetime.now().timestamp()
+    
     # Log UI context
     debug_logger.log_step("Repository analysis started from Web UI", {
         "user_id": st.session_state.current_user.id,
@@ -1275,27 +1746,12 @@ def process_authenticated_repository_analysis(repo_url: str, pat: Optional[str],
                 })
                 time.sleep(0.5)
         
-        # Simulate results generation
+        # Perform real repository analysis
         repo_name = repo_url.split('/')[-1] if '/' in repo_url else repo_url
-        fake_results = {
-            'total_issues': 42,
-            'files_analyzed': 15,
-            'lines_of_code': 1523,
-            'quality_score': 87,
-            'severity_counts': {
-                'critical': 2,
-                'major': 8,
-                'minor': 15,
-                'info': 17
-            },
-            'repository': {
-                'name': repo_name,
-                'url': repo_url,
-                'language': 'Python',
-                'size': '150KB'
-            },
-            'summary': f"Repository {repo_name} has been analyzed successfully. Found 42 issues across 15 files."
-        }
+        analysis_results = perform_real_repository_analysis(repo_url, pat, options, debug_logger)
+        
+        # Legacy compatibility - keep fake_results variable name for now
+        fake_results = analysis_results
         
         # Log final results
         debug_logger.log_data("analysis_results", fake_results)
@@ -1313,7 +1769,7 @@ def process_authenticated_repository_analysis(repo_url: str, pat: Optional[str],
             analysis_type="repository_analysis",
             findings_count=fake_results['total_issues'],
             severity_breakdown=fake_results['severity_counts'],
-            summary=fake_results['summary'],
+            summary=f"Completed analysis of {repo_name}",
             detailed_results=fake_results,
             timestamp=time.strftime('%Y-%m-%d %H:%M:%S')
         )
@@ -1321,7 +1777,8 @@ def process_authenticated_repository_analysis(repo_url: str, pat: Optional[str],
         st.session_state.session_manager.save_scan_result(
             st.session_state.current_session_id,
             st.session_state.current_user.id,
-            scan_result
+            scan_result,
+            fake_results  # Pass full analysis results for UI tabs
         )
         
         # Log session completion
@@ -1481,7 +1938,7 @@ def process_authenticated_qna_question(question: str, context_repo: Optional[str
 
 
 def render_analysis_results():
-    """Render analysis results với support cho architectural findings và multi-language analysis."""
+    """Render analysis results với tabs organization và export functionality."""
     if not st.session_state.analysis_results:
         return
     
@@ -1489,8 +1946,8 @@ def render_analysis_results():
     
     st.markdown("## 📊 Kết quả Phân tích")
     
-    # Overview metrics
-    col1, col2, col3, col4 = st.columns(4)
+    # Header with overview metrics và export button
+    col1, col2, col3, col4, col5 = st.columns([2, 2, 2, 2, 1])
     
     with col1:
         st.metric("Tổng Issues", results.get('total_issues', 0))
@@ -1504,102 +1961,567 @@ def render_analysis_results():
     with col4:
         st.metric("Quality score", f"{results.get('quality_score', 85)}/100")
     
-    # Architectural Issues
-    architectural_issues = results.get('architectural_issues', {})
-    if architectural_issues:
-        st.markdown("### 🏗️ Architectural Analysis")
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            circular_deps = architectural_issues.get('circular_dependencies', [])
-            if circular_deps:
-                st.markdown("#### 🔄 Circular Dependencies")
-                for dep in circular_deps[:5]:  # Top 5
-                    cycle_str = " → ".join(dep.get('cycle', []))
-                    if cycle_str:
-                        cycle_str += f" → {dep['cycle'][0]}"  # Complete the circle
-                    st.markdown(f"- **{dep.get('cycle_type', 'file')} cycle**: {cycle_str}")
-                    if dep.get('description'):
-                        st.markdown(f"  *{dep['description']}*")
-        
-        with col2:
-            unused_elements = architectural_issues.get('unused_elements', [])
-            if unused_elements:
-                st.markdown("#### 🗑️ Unused Public Elements")
-                for element in unused_elements[:5]:  # Top 5
-                    st.markdown(f"- **{element.get('element_type', 'element')}**: `{element.get('element_name', 'Unknown')}`")
-                    st.markdown(f"  📄 {element.get('file_path', 'Unknown file')}")
-                    if element.get('reason'):
-                        st.markdown(f"  *{element['reason']}*")
-        
-        # Architectural limitations warning
-        limitations = architectural_issues.get('limitations', [])
-        if limitations:
-            with st.expander("⚠️ Analysis Limitations"):
-                for limitation in limitations:
-                    st.markdown(f"- {limitation}")
+    with col5:
+        # Use popover for export options (Streamlit 1.28+)
+        with st.popover("📊 Export Results", use_container_width=True):
+            render_export_options(results)
+    
+    st.divider()
+    
+    # Main tabs for analysis results
+    tab1, tab2, tab3, tab4 = st.tabs(["📝 Summary", "🔍 Linting", "🏗️ Architecture", "📊 Charts"])
+    
+    with tab1:
+        render_summary_tab(results)
+    
+    with tab2:
+        render_linting_tab(results)
+    
+    with tab3:
+        render_architecture_tab(results)
+    
+    with tab4:
+        render_charts_tab(results)
 
-    # Language Distribution Charts
+
+def render_summary_tab(results: Dict[str, Any]):
+    """Render Summary tab với tổng quan toàn diện."""
+    st.markdown("### 📝 Executive Summary")
+    
+    # Overall quality assessment
+    quality_score = results.get('quality_score', 85)
+    
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        if quality_score >= 90:
+            st.success(f"🌟 **Excellent Code Quality**: {quality_score}/100")
+        elif quality_score >= 75:
+            st.info(f"👍 **Good Code Quality**: {quality_score}/100")  
+        elif quality_score >= 60:
+            st.warning(f"⚠️ **Fair Code Quality**: {quality_score}/100")
+        else:
+            st.error(f"🔴 **Needs Improvement**: {quality_score}/100")
+    
+    # Key findings summary
+    st.markdown("#### 🎯 Key Findings")
+    summary = results.get('summary', {})
+    if isinstance(summary, dict):
+        # Key issues
+        key_issues = summary.get('key_issues', [])
+        if key_issues:
+            st.markdown("**🔍 Main Issues Detected:**")
+            for i, issue in enumerate(key_issues[:5], 1):
+                st.markdown(f"{i}. {issue}")
+        
+        # Recommendations
+        recommendations = summary.get('recommendations', [])
+        if recommendations:
+            st.markdown("**💡 Recommendations:**")
+            for i, rec in enumerate(recommendations[:3], 1):
+                st.markdown(f"{i}. {rec}")
+    else:
+        st.markdown(summary if summary != 'No summary available' else "📊 Analysis completed successfully. Detailed results available in other tabs.")
+    
+    # Repository overview
+    st.markdown("#### 📁 Repository Overview")
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        languages = results.get('languages', {})
+        if languages:
+            st.markdown("**Languages Detected:**")
+            for lang, data in languages.items():
+                file_count = data.get('file_count', 0)
+                if file_count > 0:
+                    st.markdown(f"- **{lang.title()}**: {file_count} files")
+    
+    with col2:
+        total_issues = results.get('total_issues', 0)
+        files_analyzed = results.get('files_analyzed', 0)
+        if total_issues > 0 and files_analyzed > 0:
+            avg_issues = round(total_issues / files_analyzed, 2)
+            st.markdown(f"**Issue Density**: {avg_issues} issues/file")
+        
+        if results.get('analysis_duration'):
+            st.markdown(f"**Analysis Duration**: {results['analysis_duration']}")
+
+
+def render_linting_tab(results: Dict[str, Any]):
+    """Render Linting tab với kết quả static analysis."""
+    st.markdown("### 🔍 Static Analysis Results")
+    
+    static_analysis = results.get('static_analysis_by_language', {})
+    if not static_analysis:
+        st.info("📝 No static analysis results available")
+        return
+    
+    # Create sub-tabs for each language
+    languages = list(static_analysis.keys())
+    if len(languages) == 1:
+        # Single language - no sub-tabs needed
+        lang = languages[0]
+        lang_results = static_analysis[lang]
+        _render_language_analysis_results(lang, lang_results)
+    else:
+        # Multiple languages - use sub-tabs
+        lang_tabs = st.tabs([f"📄 {lang.title()}" for lang in languages])
+        
+        for tab, lang in zip(lang_tabs, languages):
+            with tab:
+                lang_results = static_analysis[lang]
+                _render_language_analysis_results(lang, lang_results)
+    
+    # Overall linting summary
+    st.markdown("#### 📊 Linting Summary")
+    total_linting_issues = sum(
+        lang_data.get('findings_count', 0) 
+        for lang_data in static_analysis.values()
+    )
+    
+    if total_linting_issues > 0:
+        st.metric("Total Linting Issues", total_linting_issues)
+        
+        # Issue severity breakdown
+        severity_counts = {'critical': 0, 'high': 0, 'medium': 0, 'low': 0}
+        for lang_data in static_analysis.values():
+            for issue in lang_data.get('top_issues', []):
+                severity = issue.get('severity', 'medium').lower()
+                if severity in severity_counts:
+                    severity_counts[severity] += 1
+        
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            st.metric("🔴 Critical", severity_counts['critical'])
+        with col2:
+            st.metric("🟠 High", severity_counts['high'])  
+        with col3:
+            st.metric("🟡 Medium", severity_counts['medium'])
+        with col4:
+            st.metric("🔵 Low", severity_counts['low'])
+
+
+def render_architecture_tab(results: Dict[str, Any]):
+    """Render Architecture tab với architectural analysis."""
+    st.markdown("### 🏗️ Architectural Analysis")
+    
+    architectural_issues = results.get('architectural_issues', {})
+    if not architectural_issues:
+        st.info("🏗️ No architectural issues detected")
+        return
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        # Circular Dependencies
+        circular_deps = architectural_issues.get('circular_dependencies', [])
+        if circular_deps:
+            st.markdown("#### 🔄 Circular Dependencies")
+            
+            for i, dep in enumerate(circular_deps[:5], 1):  # Top 5
+                with st.expander(f"Cycle {i}: {dep.get('cycle_type', 'file')} level"):
+                    cycle_str = " → ".join(dep.get('cycle', []))
+                    if cycle_str and dep.get('cycle'):
+                        cycle_str += f" → {dep['cycle'][0]}"  # Complete the circle
+                    st.markdown(f"**Path**: {cycle_str}")
+                    if dep.get('description'):
+                        st.markdown(f"**Issue**: {dep['description']}")
+                    if dep.get('impact'):
+                        st.markdown(f"**Impact**: {dep['impact']}")
+        else:
+            st.success("✅ No circular dependencies detected")
+    
+    with col2:
+        # Unused Elements
+        unused_elements = architectural_issues.get('unused_elements', [])
+        if unused_elements:
+            st.markdown("#### 🗑️ Unused Public Elements")
+            
+            for i, element in enumerate(unused_elements[:5], 1):  # Top 5
+                with st.expander(f"Unused {element.get('element_type', 'element')} {i}"):
+                    st.markdown(f"**Name**: `{element.get('element_name', 'Unknown')}`")
+                    st.markdown(f"**File**: {element.get('file_path', 'Unknown file')}")
+                    if element.get('line_number'):
+                        st.markdown(f"**Line**: {element['line_number']}")
+                    if element.get('reason'):
+                        st.markdown(f"**Reason**: {element['reason']}")
+        else:
+            st.success("✅ No unused public elements detected")
+    
+    # Architectural limitations warning
+    limitations = architectural_issues.get('limitations', [])
+    if limitations:
+        st.markdown("#### ⚠️ Analysis Limitations")
+        with st.expander("Click to view limitations"):
+            for limitation in limitations:
+                st.markdown(f"- {limitation}")
+
+
+def render_charts_tab(results: Dict[str, Any]):
+    """Render Charts tab với visualizations."""
+    st.markdown("### 📊 Data Visualizations")
+    
+    # Language Distribution Chart
     languages = results.get('languages', {})
     if languages and len(languages) > 1:
-        st.markdown("### 📊 Ngôn ngữ Distribution")
+        st.markdown("#### 🌍 Language Distribution")
         
-        import plotly.express as px
-        
-        # Language files distribution
-        lang_data = []
-        for lang, data in languages.items():
-            file_count = data.get('file_count', 0)
-            if file_count > 0:
-                lang_data.append({'Language': lang.title(), 'Files': file_count})
-        
-        if lang_data:
+        try:
+            import plotly.express as px
             import pandas as pd
-            df = pd.DataFrame(lang_data)
-            fig = px.pie(df, values='Files', names='Language', 
-                        title="Files by Language",
-                        color_discrete_sequence=px.colors.qualitative.Set3)
-            st.plotly_chart(fig, use_container_width=True)
-
-    # Static Analysis Results by Language
+            
+            # Language files distribution
+            lang_data = []
+            for lang, data in languages.items():
+                file_count = data.get('file_count', 0)
+                line_count = data.get('line_count', 0)
+                if file_count > 0:
+                    lang_data.append({
+                        'Language': lang.title(), 
+                        'Files': file_count,
+                        'Lines': line_count
+                    })
+            
+            if lang_data:
+                df = pd.DataFrame(lang_data)
+                
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    # Files distribution pie chart
+                    fig1 = px.pie(df, values='Files', names='Language', 
+                                title="Files by Language",
+                                color_discrete_sequence=px.colors.qualitative.Set3)
+                    st.plotly_chart(fig1, use_container_width=True)
+                
+                with col2:
+                    # Lines distribution pie chart  
+                    fig2 = px.pie(df, values='Lines', names='Language',
+                                title="Lines of Code by Language", 
+                                color_discrete_sequence=px.colors.qualitative.Pastel)
+                    st.plotly_chart(fig2, use_container_width=True)
+                
+                # Bar chart comparison
+                fig3 = px.bar(df, x='Language', y=['Files', 'Lines'],
+                            title="Files vs Lines of Code by Language",
+                            barmode='group')
+                st.plotly_chart(fig3, use_container_width=True)
+                
+        except ImportError:
+            st.warning("📊 Plotly not available for charts. Showing text summary instead.")
+            for lang, data in languages.items():
+                file_count = data.get('file_count', 0)
+                line_count = data.get('line_count', 0)
+                if file_count > 0:
+                    st.markdown(f"**{lang.title()}**: {file_count} files, {line_count:,} lines")
+    
+    # Issue Severity Distribution
     static_analysis = results.get('static_analysis_by_language', {})
     if static_analysis:
-        st.markdown("### 🔍 Kết quả Static Analysis theo Ngôn ngữ")
+        st.markdown("#### 🔍 Issue Severity Distribution")
         
-        # Create tabs for each language
-        languages = list(static_analysis.keys())
-        if len(languages) == 1:
-            # Single language - no tabs needed
-            lang = languages[0]
-            lang_results = static_analysis[lang]
-            _render_language_analysis_results(lang, lang_results)
-        else:
-            # Multiple languages - use tabs
-            tabs = st.tabs([f"📄 {lang.title()}" for lang in languages])
+        try:
+            import plotly.express as px
+            import pandas as pd
             
-            for tab, lang in zip(tabs, languages):
-                with tab:
-                    lang_results = static_analysis[lang]
-                    _render_language_analysis_results(lang, lang_results)
+            severity_data = []
+            for lang, lang_data in static_analysis.items():
+                for issue in lang_data.get('top_issues', []):
+                    severity = issue.get('severity', 'medium').lower()
+                    severity_data.append({
+                        'Language': lang.title(),
+                        'Severity': severity.title(),
+                        'Count': 1
+                    })
+            
+            if severity_data:
+                df = pd.DataFrame(severity_data)
+                severity_summary = df.groupby(['Language', 'Severity']).sum().reset_index()
+                
+                fig = px.bar(severity_summary, x='Language', y='Count', color='Severity',
+                           title="Issues by Language and Severity",
+                           color_discrete_map={
+                               'Critical': '#ff4444',
+                               'High': '#ff8800', 
+                               'Medium': '#ffcc00',
+                               'Low': '#4488ff'
+                           })
+                st.plotly_chart(fig, use_container_width=True)
+        except ImportError:
+            st.info("📊 Install plotly for enhanced visualizations")
     
-    # Summary
-    st.markdown("### 📝 Tóm tắt")
-    summary = results.get('summary', 'No summary available')
-    if isinstance(summary, dict):
-        # Detailed summary
-        if summary.get('overall_quality'):
-            st.markdown(f"**Chất lượng tổng thể:** {summary['overall_quality']}")
-        if summary.get('key_issues'):
-            st.markdown("**Vấn đề chính:**")
-            for issue in summary['key_issues'][:5]:  # Top 5 issues
-                st.markdown(f"- {issue}")
-        if summary.get('recommendations'):
-            st.markdown("**Khuyến nghị:**")
-            for rec in summary['recommendations'][:3]:  # Top 3 recommendations
-                st.markdown(f"- {rec}")
+    # Quality Score Gauge
+    quality_score = results.get('quality_score', 85)
+    try:
+        import plotly.graph_objects as go
+        
+        fig = go.Figure(go.Indicator(
+            mode = "gauge+number+delta",
+            value = quality_score,
+            domain = {'x': [0, 1], 'y': [0, 1]},
+            title = {'text': "Overall Quality Score"},
+            delta = {'reference': 85},
+            gauge = {
+                'axis': {'range': [None, 100]},
+                'bar': {'color': "darkblue"},
+                'steps': [
+                    {'range': [0, 50], 'color': "lightgray"},
+                    {'range': [50, 80], 'color': "gray"},
+                    {'range': [80, 100], 'color': "lightgreen"}
+                ],
+                'threshold': {
+                    'line': {'color': "red", 'width': 4},
+                    'thickness': 0.75,
+                    'value': 90
+                }
+            }
+        ))
+        
+        st.plotly_chart(fig, use_container_width=True)
+    except ImportError:
+        st.metric("Overall Quality Score", f"{quality_score}/100")
+
+
+def render_export_options(results: Dict[str, Any]):
+    """Render export options dialog."""
+    st.markdown("### 📊 Export Analysis Results")
+    
+    # Export format selection
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        export_format = st.selectbox(
+            "📄 Export Format",
+            ["JSON", "CSV", "PDF Report (Beta)", "Markdown"],
+            help="Choose the format for exporting results"
+        )
+    
+    with col2:
+        include_details = st.checkbox(
+            "Include Detailed Findings",
+            value=True,
+            help="Include detailed findings and recommendations"
+        )
+    
+    # Export sections
+    st.markdown("**🎯 Select Sections to Export:**")
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        export_summary = st.checkbox("📝 Summary", value=True)
+        export_linting = st.checkbox("🔍 Linting Results", value=True)
+    
+    with col2:
+        export_architecture = st.checkbox("🏗️ Architecture Analysis", value=True)
+        export_charts = st.checkbox("📊 Charts & Metrics", value=False)
+    
+    with col3:
+        export_metadata = st.checkbox("📋 Metadata", value=True)
+    
+    # Generate download button
+    if st.button("⬇️ Generate Export", type="primary", use_container_width=True):
+        try:
+            exported_data = prepare_export_data(
+                results, export_format, include_details,
+                export_summary, export_linting, export_architecture, 
+                export_charts, export_metadata
+            )
+            
+            filename = f"ai_codescan_results_{int(time.time())}.{export_format.lower()}"
+            
+            st.download_button(
+                label=f"📥 Download {export_format} Report",
+                data=exported_data,
+                file_name=filename,
+                mime=get_mime_type(export_format),
+                use_container_width=True
+            )
+            
+            st.success(f"✅ {export_format} export ready for download!")
+            
+        except Exception as e:
+            st.error(f"❌ Export failed: {str(e)}")
+
+
+def prepare_export_data(results: Dict[str, Any], format: str, include_details: bool, 
+                       include_summary: bool, include_linting: bool, 
+                       include_architecture: bool, include_charts: bool, 
+                       include_metadata: bool) -> str:
+    """Prepare export data based on selected options."""
+    import json
+    import time
+    from datetime import datetime
+    
+    export_data = {
+        "export_info": {
+            "generated_at": datetime.now().isoformat(),
+            "format": format,
+            "ai_codescan_version": "1.0",
+            "include_details": include_details
+        }
+    }
+    
+    if include_metadata:
+        export_data["metadata"] = {
+            "total_issues": results.get('total_issues', 0),
+            "files_analyzed": results.get('files_analyzed', 0),
+            "lines_of_code": results.get('lines_of_code', 0),
+            "quality_score": results.get('quality_score', 85),
+            "languages": results.get('languages', {})
+        }
+    
+    if include_summary:
+        export_data["summary"] = results.get('summary', {})
+    
+    if include_linting:
+        export_data["static_analysis"] = results.get('static_analysis_by_language', {})
+    
+    if include_architecture:
+        export_data["architectural_analysis"] = results.get('architectural_issues', {})
+    
+    if include_charts:
+        export_data["charts_data"] = {
+            "languages": results.get('languages', {}),
+            "quality_metrics": {
+                "quality_score": results.get('quality_score', 85)
+            }
+        }
+    
+    if format.upper() == "JSON":
+        return json.dumps(export_data, indent=2, ensure_ascii=False)
+    elif format.upper() == "CSV":
+        return convert_to_csv(export_data)
+    elif format.upper() == "MARKDOWN":
+        return convert_to_markdown(export_data)
+    elif format.upper() == "PDF REPORT (BETA)":
+        return convert_to_pdf_text(export_data)
     else:
-        st.markdown(summary)
+        return json.dumps(export_data, indent=2)
+
+
+def convert_to_csv(data: Dict[str, Any]) -> str:
+    """Convert export data to CSV format."""
+    import io
+    import csv
+    
+    output = io.StringIO()
+    writer = csv.writer(output)
+    
+    # Write header
+    writer.writerow(["AI CodeScan Analysis Results"])
+    writer.writerow([])
+    
+    # Write metadata
+    if "metadata" in data:
+        writer.writerow(["Metadata"])
+        for key, value in data["metadata"].items():
+            if isinstance(value, dict):
+                writer.writerow([key, str(value)])
+            else:
+                writer.writerow([key, value])
+        writer.writerow([])
+    
+    # Write summary findings (simplified for CSV)
+    if "static_analysis" in data:
+        writer.writerow(["Static Analysis Issues"])
+        writer.writerow(["Language", "Tool", "Issue Count", "Top Issue"])
+        
+        for lang, lang_data in data["static_analysis"].items():
+            tools = ", ".join(lang_data.get('tools_used', []))
+            count = lang_data.get('findings_count', 0)
+            top_issue = ""
+            if lang_data.get('top_issues'):
+                top_issue = lang_data['top_issues'][0].get('message', '')
+            writer.writerow([lang, tools, count, top_issue])
+    
+    return output.getvalue()
+
+
+def convert_to_markdown(data: Dict[str, Any]) -> str:
+    """Convert export data to Markdown format."""
+    md = ["# AI CodeScan Analysis Report"]
+    md.append(f"Generated at: {data['export_info']['generated_at']}")
+    md.append("")
+    
+    # Metadata section
+    if "metadata" in data:
+        md.append("## 📊 Overview")
+        metadata = data["metadata"]
+        md.append(f"- **Total Issues**: {metadata.get('total_issues', 0)}")
+        md.append(f"- **Files Analyzed**: {metadata.get('files_analyzed', 0)}")
+        md.append(f"- **Lines of Code**: {metadata.get('lines_of_code', 0):,}")
+        md.append(f"- **Quality Score**: {metadata.get('quality_score', 85)}/100")
+        md.append("")
+    
+    # Summary section
+    if "summary" in data and data["summary"]:
+        md.append("## 📝 Summary")
+        summary = data["summary"]
+        if isinstance(summary, dict):
+            if summary.get('overall_quality'):
+                md.append(f"**Overall Quality**: {summary['overall_quality']}")
+            if summary.get('key_issues'):
+                md.append("**Key Issues:**")
+                for issue in summary['key_issues']:
+                    md.append(f"- {issue}")
+            if summary.get('recommendations'):
+                md.append("**Recommendations:**")
+                for rec in summary['recommendations']:
+                    md.append(f"- {rec}")
+        else:
+            md.append(str(summary))
+        md.append("")
+    
+    # Static analysis section
+    if "static_analysis" in data:
+        md.append("## 🔍 Static Analysis Results")
+        for lang, lang_data in data["static_analysis"].items():
+            md.append(f"### {lang.title()}")
+            md.append(f"- **Tools Used**: {', '.join(lang_data.get('tools_used', []))}")
+            md.append(f"- **Issues Found**: {lang_data.get('findings_count', 0)}")
+            
+            top_issues = lang_data.get('top_issues', [])
+            if top_issues:
+                md.append("**Top Issues:**")
+                for issue in top_issues[:3]:
+                    severity = issue.get('severity', 'medium')
+                    md.append(f"- **{severity.upper()}**: {issue.get('message', 'Unknown issue')}")
+                    if issue.get('file_path'):
+                        md.append(f"  - File: {issue['file_path']}")
+            md.append("")
+    
+    return "\n".join(md)
+
+
+def convert_to_pdf_text(data: Dict[str, Any]) -> str:
+    """Convert to PDF-like text format (simplified PDF report)."""
+    # For now, return markdown format with PDF styling hints
+    # In the future, this could use reportlab or similar to generate actual PDF
+    report = convert_to_markdown(data)
+    
+    # Add PDF header
+    pdf_header = """
+=======================================
+    AI CODESCAN ANALYSIS REPORT
+=======================================
+
+This is a text-based report format.
+For full PDF support, additional libraries would be needed.
+
+"""
+    
+    return pdf_header + report
+
+
+def get_mime_type(format: str) -> str:
+    """Get MIME type for download button."""
+    mime_types = {
+        "JSON": "application/json",
+        "CSV": "text/csv", 
+        "MARKDOWN": "text/markdown",
+        "PDF REPORT (BETA)": "text/plain"
+    }
+    return mime_types.get(format.upper(), "text/plain")
 
 def _render_language_analysis_results(language: str, results: Dict[str, Any]):
     """Render analysis results cho một ngôn ngữ cụ thể."""
@@ -1678,19 +2600,30 @@ def render_history_view():
     
     # Show scan results if available
     if session.scan_result:
-        st.markdown("### 📊 Kết quả Scan")
-        
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            st.metric("Findings", session.scan_result.findings_count)
-        with col2:
-            st.metric("Repository", session.scan_result.repository_name or "Unknown")
-        with col3:
-            st.metric("Analysis Type", session.scan_result.analysis_type)
-        
-        if session.scan_result.summary:
-            st.markdown("**Tóm tắt:**")
-            st.markdown(session.scan_result.summary)
+        # Check if we have full analysis results or just basic scan result
+        if hasattr(session, 'analysis_results') and session.analysis_results:
+            # Use full analysis results with tabs
+            st.session_state.analysis_results = session.analysis_results
+            render_analysis_results()
+        elif session.scan_result.detailed_results:
+            # Try to use detailed_results as analysis results
+            st.session_state.analysis_results = session.scan_result.detailed_results
+            render_analysis_results()
+        else:
+            # Fallback to basic scan result display
+            st.markdown("### 📊 Kết quả Scan")
+            
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("Findings", session.scan_result.findings_count)
+            with col2:
+                st.metric("Repository", session.scan_result.repository_name or "Unknown")
+            with col3:
+                st.metric("Analysis Type", session.scan_result.analysis_type)
+            
+            if session.scan_result.summary:
+                st.markdown("**Tóm tắt:**")
+                st.markdown(session.scan_result.summary)
     
     # Show chat messages if available
     if session.chat_messages:

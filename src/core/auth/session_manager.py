@@ -79,6 +79,7 @@ class AuthenticatedSessionHistory:
     metadata: Optional[Dict[str, Any]] = None
     scan_result: Optional[AuthenticatedScanResult] = None
     chat_messages: List[AuthenticatedChatMessage] = None
+    analysis_results: Optional[Dict[str, Any]] = None  # Full analysis results for UI tabs
     
     def __post_init__(self):
         if self.chat_messages is None:
@@ -190,7 +191,8 @@ class AuthenticatedSessionManager:
         self,
         session_id: str,
         user_id: int,
-        scan_result: AuthenticatedScanResult
+        scan_result: AuthenticatedScanResult,
+        analysis_results: Optional[Dict[str, Any]] = None
     ) -> bool:
         """
         Save scan result to session.
@@ -216,6 +218,9 @@ class AuthenticatedSessionManager:
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """
             
+            # Use analysis_results if provided, otherwise use detailed_results
+            results_to_save = analysis_results if analysis_results else scan_result.detailed_results
+            
             self.db.execute_insert(
                 query,
                 (
@@ -227,7 +232,7 @@ class AuthenticatedSessionManager:
                     scan_result.findings_count,
                     json.dumps(scan_result.severity_breakdown),
                     scan_result.summary,
-                    json.dumps(scan_result.detailed_results)
+                    json.dumps(results_to_save)
                 )
             )
             
@@ -330,6 +335,11 @@ class AuthenticatedSessionManager:
             # Get chat messages
             chat_messages = self._get_chat_messages(session_id, user_id)
             
+            # Use detailed_results from scan_result as analysis_results if available
+            analysis_results = None
+            if scan_result and scan_result.detailed_results:
+                analysis_results = scan_result.detailed_results
+
             return AuthenticatedSessionHistory(
                 session_id=session_data['session_id'],
                 user_id=session_data['user_id'],
@@ -341,7 +351,8 @@ class AuthenticatedSessionManager:
                 updated_at=session_data['updated_at'],
                 metadata=metadata,
                 scan_result=scan_result,
-                chat_messages=chat_messages
+                chat_messages=chat_messages,
+                analysis_results=analysis_results
             )
             
         except Exception as e:
