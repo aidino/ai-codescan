@@ -1,113 +1,111 @@
 # 🤖 AI CodeScan
 
-AI-powered code review assistant với multi-agent architecture
+AI-powered code review assistant với kiến trúc multi-agent
 
-## ✨ Features
+## ✨ Tính năng chính
 
-- 🔍 **Automated Code Analysis**: Python repository analysis với static tools
-- 🌐 **Modern Web UI**: Interactive Streamlit interface
-- 🤖 **Multi-Agent Architecture**: LangGraph-based agent orchestration
+- 🔍 **Phân tích Code tự động**: Phân tích Python repository với static analysis tools
+- 🌐 **Giao diện Web hiện đại**: Interactive Streamlit interface với enhanced components
+- 🤖 **Kiến trúc Multi-Agent**: LangGraph-based agent orchestration
 - 📊 **Knowledge Graph**: Neo4j-powered code relationship mapping
-- 🧠 **LLM Integration**: AI-powered insights và explanations
-- 🐳 **Containerized**: Docker-first development và deployment
+- 🧠 **Tích hợp LLM**: AI-powered insights và explanations
+- 🐳 **Container hóa**: Docker-first development và deployment
 
-## ⚙️ Environment Configuration
+## 🚀 Cài đặt nhanh
 
-### Step 1: Environment Setup
-
-```bash
-# Copy environment template
-cp .env.example .env
-
-# Edit .env file với your settings
-nano .env  # or vim, code, etc.
-```
-
-### Step 2: Required Configuration
-
-**🔑 OpenAI API Key (Required)**
-```bash
-# Get your API key from: https://platform.openai.com/api-keys
-OPENAI_API_KEY=sk-your-actual-openai-api-key-here
-```
-
-**🔒 Security Keys (Auto-generated)**
-```bash
-# These are already generated in .env, change in production:
-SECRET_KEY=<random-secure-key>
-PAT_ENCRYPTION_KEY=<random-secure-key>
-```
-
-### Step 3: Database Configuration (Auto-configured)
-
-Docker Compose sẽ tự động setup:
-- **Neo4j**: `bolt://localhost:7687` (neo4j/ai_codescan_password)
-- **Redis**: `localhost:6379` (no password)
-
-### Environment Variables Reference
-
-| Variable | Description | Default | Required |
-|----------|-------------|---------|----------|
-| `OPENAI_API_KEY` | OpenAI API key cho LLM features | - | ✅ |
-| `AI_CODESCAN_ENV` | Environment mode | development | ❌ |
-| `NEO4J_PASSWORD` | Neo4j database password | ai_codescan_password | ❌ |
-| `MAX_REPOSITORY_SIZE_MB` | Max repo size limit | 500 | ❌ |
-| `CLONE_TIMEOUT_SECONDS` | Git clone timeout | 300 | ❌ |
-
-## 🚀 Quick Start
-
-### Prerequisites
+### Yêu cầu hệ thống
 
 - Python 3.12+
 - Docker & Docker Compose
 - OpenAI API Key
 
-### Docker (Recommended)
+### Cài đặt với Docker (Khuyến nghị)
 
 ```bash
 # 1. Clone repository
 git clone <repository-url>
 cd ai-codescan
 
-# 2. Setup environment (see Environment Configuration section above)
+# 2. Setup environment
 cp .env.example .env
-# Edit .env and add your OPENAI_API_KEY
+# Chỉnh sửa .env và thêm OPENAI_API_KEY của bạn
 
-# 3. Start services
+# 3. Khởi động services
 chmod +x scripts/setup.sh
 ./scripts/setup.sh
 
-# Or manually:
+# Hoặc chạy thủ công:
 docker-compose up --build -d
 ```
 
-**Access Applications**:
-- 🔐 Authenticated Web UI: http://localhost:8501 (admin/admin123456)
+**Truy cập ứng dụng**:
+- 🔐 Web UI: http://localhost:8501 (admin/admin123456)
 - 📊 Neo4j Browser: http://localhost:7474 (neo4j/ai_codescan_password)
 
-### Local Development
+### Cài đặt cho Development
 
 ```bash
 # 1. Setup environment
 cp .env.example .env
-# Edit .env and add your OPENAI_API_KEY
+# Chỉnh sửa .env và thêm OPENAI_API_KEY
 
-# 2. Install dependencies
+# 2. Cài đặt dependencies
 pip install -r requirements.txt
 
-# 3. Run authenticated web interface
+# 3. Chạy web interface
 python src/main.py web
 ```
 
-## 📋 Requirements
+## ⚙️ Cấu hình Environment
 
-- Python 3.12+
-- Docker & Docker Compose
-- Git
+### Biến môi trường bắt buộc
 
-## 🏗️ Architecture
+```bash
+# .env file
+OPENAI_API_KEY=sk-your-actual-openai-api-key-here
+```
 
-### Multi-Agent System
+### Biến môi trường tùy chọn
+
+| Variable | Mô tả | Mặc định |
+|----------|-------|----------|
+| `AI_CODESCAN_ENV` | Environment mode | development |
+| `NEO4J_PASSWORD` | Neo4j password | ai_codescan_password |
+| `MAX_REPOSITORY_SIZE_MB` | Giới hạn kích thước repo | 500 |
+| `CLONE_TIMEOUT_SECONDS` | Timeout clone Git | 300 |
+
+## 💻 Hướng dẫn sử dụng
+
+### 1. Web Interface (Khuyến nghị)
+
+1. **Truy cập**: http://localhost:8501
+2. **Đăng nhập**: username=`admin`, password=`admin123456`
+3. **Chọn loại phân tích**:
+   - **Repository Review**: Phân tích toàn bộ codebase
+   - **PR Review**: Phân tích Pull Request
+   - **Code Q&A**: Hỏi đáp về code
+4. **Nhập URL**: GitHub, GitLab, BitBucket repository
+5. **Xem kết quả**: Interactive charts và báo cáo chi tiết
+
+### 2. Command Line Interface
+
+```bash
+# Phân tích repository
+python src/main.py analyze --url https://github.com/user/repo
+
+# Review Pull Request
+python src/main.py review-pr --url https://github.com/user/repo --pr-id 123
+
+# Khởi động web interface
+python src/main.py web
+
+# Kiểm tra version
+python src/main.py version
+```
+
+## 🏗️ Kiến trúc hệ thống
+
+### Multi-Agent Architecture
 
 ```
 ┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
@@ -129,163 +127,72 @@ python src/main.py web
                         └────────────────┘
 ```
 
-### Agent Teams
+### Các Agent Team
 
-1. **🎯 Orchestrator**: Central workflow coordination
-2. **💻 Interaction & Tasking**: Web UI và user interaction  
-3. **📥 Data Acquisition**: Repository cloning và preparation
-4. **🕸️ CKG Operations**: Code knowledge graph construction
+1. **🎯 Orchestrator**: Điều phối workflow trung tâm
+2. **💻 Interaction & Tasking**: Web UI và tương tác người dùng
+3. **📥 Data Acquisition**: Clone repository và chuẩn bị dữ liệu
+4. **🕸️ CKG Operations**: Xây dựng Code Knowledge Graph
 5. **🔍 Code Analysis**: Static analysis và architectural insights
 6. **🧠 LLM Services**: AI-powered analysis và explanations
-7. **📊 Synthesis & Reporting**: Result aggregation và presentation
+7. **📊 Synthesis & Reporting**: Tổng hợp và trình bày kết quả
 
-## 🛠️ Tech Stack
+## 🛠️ Công nghệ sử dụng
 
-- **Frontend**: Streamlit, HTML/CSS, JavaScript
-- **Backend**: Python 3.12, pip, Pydantic
+- **Frontend**: Streamlit, Enhanced Components (streamlit-aggrid, streamlit-ace, streamlit-option-menu)
+- **Backend**: Python 3.12, FastAPI, Pydantic
 - **Database**: Neo4j Community, Redis
 - **AI/ML**: OpenAI API, LangChain, LangGraph
 - **DevOps**: Docker, Docker Compose
 - **Code Analysis**: Flake8, Pylint, MyPy, Black
 - **Version Control**: Git, GitPython, PyGithub
 
-## 💻 Development
+## 🎯 Ngôn ngữ hỗ trợ
 
-### Environment Setup
+- ✅ **Python**: Flake8, Pylint, MyPy, Black (Hoàn thành)
+- 🚧 **Java**: Checkstyle, PMD (Đang phát triển)
+- 🚧 **Dart**: Dart Analyzer (Đang phát triển)
+- 🚧 **Kotlin**: Detekt, Ktlint (Đang phát triển)
+
+## 🧪 Testing
 
 ```bash
-# Install dependencies
-pip install -r requirements.txt
+# Chạy all tests
+python src/main.py test
 
-# Activate virtual environment (optional)
-python -m venv venv
-source venv/bin/activate  # Linux/Mac
-# venv\Scripts\activate   # Windows
+# Test connection
+python scripts/test_neo4j.py
 
-# Run tests
-pytest
+# Test specific modules
+pytest tests/unit/ tests/integration/
 
 # Code formatting
-black src/
-isort src/
+black src/ tests/
+isort src/ tests/
 
 # Type checking
 mypy src/
 ```
 
-### Testing
+## 📚 Tài liệu
 
-```bash
-# Run all tests
-python src/main.py test
-
-# Test Neo4j connection
-python scripts/test_neo4j.py
-
-# Test specific modules
-pytest tests/unit/test_orchestrator.py
-```
-
-### Docker Development
-
-```bash
-# Build and run
-docker-compose up --build
-
-# View logs
-docker-compose logs -f ai-codescan
-
-# Execute commands in container
-docker-compose exec ai-codescan bash
-
-# Clean up
-docker-compose down -v
-```
-
-## 📖 Usage
-
-### Command Line Interface
-
-```bash
-# Repository analysis
-python src/main.py analyze --url https://github.com/user/repo
-
-# PR review  
-python src/main.py review-pr --url https://github.com/user/repo --pr-id 123
-
-# Web interface
-python src/main.py web
-
-# Version info
-python src/main.py version
-```
-
-### Web Interface
-
-1. 🔐 Navigate to http://localhost:8501 và login với default admin account
-2. 👤 **Default Login**: username=`admin`, password=`admin123456`
-3. 📝 Choose analysis type:
-   - **Repository Review**: Full codebase analysis
-   - **PR Review**: Pull request analysis  
-   - **Code Q&A**: Interactive code questions
-4. 🔗 Enter repository URL (GitHub, GitLab, BitBucket)
-5. ⚙️ Configure analysis options
-6. 📊 Review results with interactive charts và exports
-7. 📚 Access your session history và user dashboard
-
-## 🎯 Supported Languages
-
-- ✅ **Python**: Flake8, Pylint, MyPy, Black
-- 🚧 **Java**: Checkstyle, PMD (planned)
-- 🚧 **Dart**: Dart Analyzer (planned)  
-- 🚧 **Kotlin**: Detekt, Ktlint (planned)
-
-## 🗃️ Database Schema
-
-- **Neo4j**: Code Knowledge Graph (CKG)
-  - Nodes: Files, Classes, Functions, Variables
-  - Relationships: IMPORTS, CALLS, DEFINES, INHERITS
-- **Redis**: Session management, caching
-
-## 📈 Development Status
-
-### ✅ Completed
-
-- ✅ **Task 0.1-0.7**: Project foundation và Docker setup
-- ✅ **Task 1.1**: LangGraph orchestrator implementation
-- ✅ **Task 1.2**: Complete Streamlit Web UI với 4 agents
-- ✅ **Docker Infrastructure**: Fixed dependency issues, all containers healthy
-
-### 🚧 In Progress
-
-- 🔄 **Task 1.3**: Data Acquisition team implementation
-
-### 📋 Roadmap
-
-- **Phase 1**: Basic Python analysis with Web UI ✅
-- **Phase 2**: Multi-language support và architectural analysis
-- **Phase 3**: LLM integration và PR analysis
-- **Phase 4**: Advanced diagramming và UX improvements
-- **Phase 5**: Research và continuous improvements
+Xem thêm tài liệu chi tiết trong thư mục `docs/`:
+- `PLANNING.md`: Kiến trúc hệ thống và planning
+- `DESIGN.md`: Thiết kế chi tiết toàn diện
+- `Task_4_4_Implementation_Guide.md`: Hướng dẫn Enhanced Components
 
 ## 🤝 Contributing
 
 1. Fork repository
-2. Create feature branch
-3. Follow coding standards (Black, isort, mypy)
-4. Write tests cho new features
-5. Submit pull request
+2. Tạo feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit changes (`git commit -m 'Add AmazingFeature'`)
+4. Push branch (`git push origin feature/AmazingFeature`)
+5. Tạo Pull Request
 
 ## 📄 License
 
-[Your chosen license]
+Distributed under the MIT License. See `LICENSE` for more information.
 
-## 🆘 Support
+## 📞 Support
 
-- 📚 Documentation: [Link to docs]
-- 🐛 Issues: [GitHub Issues]
-- 💬 Discussions: [GitHub Discussions]
-
----
-
-**Made with ❤️ for better code quality**
+Nếu gặp vấn đề, hãy tạo issue trong GitHub repository.

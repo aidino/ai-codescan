@@ -4,6 +4,7 @@ AI CodeScan - Static Analysis Integrator Agent
 
 Agent tích hợp các công cụ static analysis như flake8, pylint, mypy.
 Chạy analysis tools và parse kết quả thành structured findings.
+Enhanced với multi-language bridge integration cho Java, Dart, Kotlin.
 """
 
 import subprocess
@@ -14,6 +15,9 @@ from typing import Dict, List, Any, Optional, Tuple
 from dataclasses import dataclass
 from loguru import logger
 from enum import Enum
+
+# Import bridge classes
+# Bridge classes will be imported lazily to avoid circular imports
 
 
 class SeverityLevel(Enum):
@@ -82,7 +86,7 @@ class StaticAnalysisIntegratorAgent:
     
     def __init__(self, tools_config: Optional[Dict[str, Any]] = None):
         """
-        Khởi tạo StaticAnalysisIntegratorAgent.
+        Khởi tạo StaticAnalysisIntegratorAgent với bridge classes support.
         
         Args:
             tools_config: Cấu hình cho các tools
@@ -90,6 +94,60 @@ class StaticAnalysisIntegratorAgent:
         self.tools_config = tools_config or self._get_default_config()
         self.supported_tools = ["flake8", "pylint", "mypy", "checkstyle", "pmd", "dart_analyze", "detekt"]
         
+        # Initialize bridge classes for multi-language support
+        self._bridge_instances = {}
+        self._initialize_bridge_classes()
+        
+        # Track bridge availability (determined during initialization)
+        self.bridge_availability = {
+            "java": hasattr(self, '_java_bridge') and self._java_bridge is not None,
+            "dart": hasattr(self, '_dart_bridge') and self._dart_bridge is not None,
+            "kotlin": hasattr(self, '_kotlin_bridge') and self._kotlin_bridge is not None
+        }
+        
+        logger.info(f"StaticAnalysisIntegratorAgent initialized - Bridge availability: {self.bridge_availability}")
+    
+    def _initialize_bridge_classes(self) -> None:
+        """Initialize multi-language bridge classes using lazy loading."""
+        # Initialize Java bridge
+        try:
+            from .java_parser import JavaCodeAnalysisAgent
+            self._java_bridge = JavaCodeAnalysisAgent()
+            self._bridge_instances['java'] = self._java_bridge
+            logger.info("✅ Java bridge initialized successfully")
+        except ImportError as e:
+            logger.warning(f"⚠️ Java bridge import failed: {e}")
+            self._java_bridge = None
+        except Exception as e:
+            logger.error(f"❌ Failed to initialize Java bridge: {e}")
+            self._java_bridge = None
+        
+        # Initialize Dart bridge
+        try:
+            from .dart_parser import DartCodeAnalysisAgent
+            self._dart_bridge = DartCodeAnalysisAgent()
+            self._bridge_instances['dart'] = self._dart_bridge
+            logger.info("✅ Dart bridge initialized successfully")
+        except ImportError as e:
+            logger.warning(f"⚠️ Dart bridge import failed: {e}")
+            self._dart_bridge = None
+        except Exception as e:
+            logger.error(f"❌ Failed to initialize Dart bridge: {e}")
+            self._dart_bridge = None
+        
+        # Initialize Kotlin bridge
+        try:
+            from .kotlin_parser import KotlinCodeAnalysisAgent
+            self._kotlin_bridge = KotlinCodeAnalysisAgent()
+            self._bridge_instances['kotlin'] = self._kotlin_bridge
+            logger.info("✅ Kotlin bridge initialized successfully")
+        except ImportError as e:
+            logger.warning(f"⚠️ Kotlin bridge import failed: {e}")
+            self._kotlin_bridge = None
+        except Exception as e:
+            logger.error(f"❌ Failed to initialize Kotlin bridge: {e}")
+            self._kotlin_bridge = None
+    
     def _get_default_config(self) -> Dict[str, Any]:
         """Lấy cấu hình mặc định cho tools."""
         return {
@@ -2381,3 +2439,163 @@ class StaticAnalysisIntegratorAgent:
         download_url = f"https://github.com/detekt/detekt/releases/download/v{version}/detekt-cli-{version}-all.jar"
         
         return self._download_jar("detekt", version, download_url) 
+    
+    def run_multi_language_analysis(self, project_path: str, languages: Optional[List[str]] = None) -> Dict[str, Any]:
+        """
+        Run multi-language code analysis using bridge classes.
+        
+        Args:
+            project_path: Path to project root
+            languages: List of languages to analyze (default: auto-detect)
+            
+        Returns:
+            Dict với analysis results từ bridge classes
+        """
+        if not os.path.exists(project_path):
+            logger.error(f"Project path không tồn tại: {project_path}")
+            return {"error": f"Project path không tồn tại: {project_path}"}
+        
+        # Auto-detect languages if not specified
+        if languages is None:
+            languages = self._detect_project_languages(project_path)
+        
+        logger.info(f"Running multi-language analysis on {project_path} for languages: {languages}")
+        
+        results = {
+            "project_path": project_path,
+            "languages_analyzed": [],
+            "analysis_results": {},
+            "bridge_availability": self.bridge_availability.copy(),
+            "total_files_analyzed": 0,
+            "total_elements_found": 0,
+            "analysis_summary": {}
+        }
+        
+        # Run Java analysis
+        if "java" in languages and self._java_bridge is not None:
+            try:
+                java_result = self._java_bridge.analyze_java_project(project_path)
+                results["analysis_results"]["java"] = java_result
+                results["languages_analyzed"].append("java")
+                
+                if java_result.success:
+                    results["total_files_analyzed"] += java_result.files_analyzed
+                    results["total_elements_found"] += java_result.total_elements
+                    results["analysis_summary"]["java"] = self._java_bridge.get_project_statistics(java_result)
+                
+                logger.info(f"✅ Java analysis completed: {java_result.files_analyzed} files, {java_result.total_elements} elements")
+            except Exception as e:
+                logger.error(f"❌ Java analysis failed: {e}")
+                results["analysis_results"]["java"] = {"error": str(e)}
+        
+        # Run Dart analysis  
+        if "dart" in languages and self._dart_bridge is not None:
+            try:
+                dart_result = self._dart_bridge.analyze_dart_project(project_path)
+                results["analysis_results"]["dart"] = dart_result
+                results["languages_analyzed"].append("dart")
+                
+                if dart_result.success:
+                    results["total_files_analyzed"] += dart_result.files_analyzed
+                    results["total_elements_found"] += dart_result.total_elements
+                    results["analysis_summary"]["dart"] = self._dart_bridge.get_project_statistics(dart_result)
+                    
+                    # Add Flutter detection
+                    if self._dart_bridge.is_flutter_project(project_path):
+                        results["analysis_summary"]["dart"]["project_type"] = "Flutter"
+                    else:
+                        results["analysis_summary"]["dart"]["project_type"] = "Dart"
+                
+                logger.info(f"✅ Dart analysis completed: {dart_result.files_analyzed} files, {dart_result.total_elements} elements")
+            except Exception as e:
+                logger.error(f"❌ Dart analysis failed: {e}")
+                results["analysis_results"]["dart"] = {"error": str(e)}
+        
+        # Run Kotlin analysis
+        if "kotlin" in languages and self._kotlin_bridge is not None:
+            try:
+                kotlin_result = self._kotlin_bridge.analyze_kotlin_project(project_path)
+                results["analysis_results"]["kotlin"] = kotlin_result
+                results["languages_analyzed"].append("kotlin")
+                
+                if kotlin_result.success:
+                    results["total_files_analyzed"] += kotlin_result.files_analyzed
+                    results["total_elements_found"] += kotlin_result.total_elements
+                    results["analysis_summary"]["kotlin"] = self._kotlin_bridge.get_project_statistics(kotlin_result)
+                    
+                    # Add Android detection
+                    if self._kotlin_bridge.is_android_project(project_path):
+                        results["analysis_summary"]["kotlin"]["project_type"] = "Android"
+                    else:
+                        results["analysis_summary"]["kotlin"]["project_type"] = "Kotlin"
+                
+                logger.info(f"✅ Kotlin analysis completed: {kotlin_result.files_analyzed} files, {kotlin_result.total_elements} elements")
+            except Exception as e:
+                logger.error(f"❌ Kotlin analysis failed: {e}")
+                results["analysis_results"]["kotlin"] = {"error": str(e)}
+        
+        # Log summary
+        logger.info(f"🎯 Multi-language analysis completed: {len(results['languages_analyzed'])} languages, "
+                   f"{results['total_files_analyzed']} files, {results['total_elements_found']} elements")
+        
+        return results
+    
+    def _detect_project_languages(self, project_path: str) -> List[str]:
+        """
+        Auto-detect languages trong project based on file extensions và structure.
+        
+        Args:
+            project_path: Path to project root
+            
+        Returns:
+            List of detected languages
+        """
+        languages = []
+        project_path = Path(project_path)
+        
+        try:
+            # Check for Java files
+            if list(project_path.rglob("*.java")):
+                languages.append("java")
+                logger.debug("✅ Detected Java files")
+            
+            # Check for Dart files
+            if list(project_path.rglob("*.dart")):
+                languages.append("dart")
+                logger.debug("✅ Detected Dart files")
+            
+            # Check for Kotlin files
+            if list(project_path.rglob("*.kt")) or list(project_path.rglob("*.kts")):
+                languages.append("kotlin")
+                logger.debug("✅ Detected Kotlin files")
+            
+            # Also check for Python files for completeness
+            if list(project_path.rglob("*.py")):
+                languages.append("python")
+                logger.debug("✅ Detected Python files")
+            
+        except Exception as e:
+            logger.error(f"Error detecting project languages: {e}")
+        
+        logger.info(f"Detected languages in {project_path}: {languages}")
+        return languages
+    
+    def get_bridge_capabilities(self) -> Dict[str, Dict[str, bool]]:
+        """
+        Get capabilities của all bridge classes.
+        
+        Returns:
+            Dict với capabilities cho mỗi bridge
+        """
+        capabilities = {}
+        
+        if self._java_bridge is not None:
+            capabilities["java"] = self._java_bridge.get_capabilities()
+        
+        if self._dart_bridge is not None:
+            capabilities["dart"] = self._dart_bridge.get_capabilities()
+            
+        if self._kotlin_bridge is not None:
+            capabilities["kotlin"] = self._kotlin_bridge.get_capabilities()
+        
+        return capabilities

@@ -17,7 +17,6 @@ from loguru import logger
 from .feedback_collector import (
     FeedbackCollectorAgent, 
     UserFeedback, 
-    FeedbackAnalytics,
     FeedbackType,
     FeatureArea,
     SatisfactionLevel
@@ -316,7 +315,7 @@ class UIImprovementAgent:
             logger.error(f"Failed to get improvement stats: {e}")
             return {}
     
-    def _analyze_satisfaction_issues(self, analytics: FeedbackAnalytics) -> List[UIImprovement]:
+    def _analyze_satisfaction_issues(self, analytics: Dict[str, Any]) -> List[UIImprovement]:
         """Analyze satisfaction levels and generate improvements."""
         improvements = []
         
@@ -345,7 +344,7 @@ class UIImprovementAgent:
         
         return improvements
     
-    def _analyze_feature_area_issues(self, analytics: FeedbackAnalytics) -> List[UIImprovement]:
+    def _analyze_feature_area_issues(self, analytics: Dict[str, Any]) -> List[UIImprovement]:
         """Analyze feature area feedback and generate improvements."""
         improvements = []
         
@@ -403,7 +402,7 @@ class UIImprovementAgent:
         
         return improvements
     
-    def _generate_proactive_improvements(self, analytics: FeedbackAnalytics) -> List[UIImprovement]:
+    def _generate_proactive_improvements(self, analytics: Dict[str, Any]) -> List[UIImprovement]:
         """Generate proactive improvements based on trends."""
         improvements = []
         

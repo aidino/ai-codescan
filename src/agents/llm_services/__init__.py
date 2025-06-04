@@ -40,6 +40,20 @@ from .context_provider import (
     PreparedContext
 )
 
+# NOTE: LLMAnalysisSupportAgent is in code_analysis module
+# Import reference để có thể access được
+try:
+    from ..code_analysis.llm_analysis_support import (
+        LLMAnalysisSupportAgent,
+        CodeExplanationRequest,
+        PRSummaryRequest,
+        QARequest,
+        create_llm_analysis_support_agent
+    )
+    _LLM_ANALYSIS_AVAILABLE = True
+except ImportError:
+    _LLM_ANALYSIS_AVAILABLE = False
+
 __all__ = [
     # Provider Abstraction
     'LLMProvider',
@@ -70,3 +84,13 @@ __all__ = [
     'ContextType',
     'PreparedContext'
 ]
+
+# Conditionally add LLM Analysis Support exports
+if _LLM_ANALYSIS_AVAILABLE:
+    __all__.extend([
+        'LLMAnalysisSupportAgent',
+        'CodeExplanationRequest', 
+        'PRSummaryRequest',
+        'QARequest',
+        'create_llm_analysis_support_agent'
+    ])

@@ -59,11 +59,18 @@ from agents.interaction_tasking.feedback_collector import (
     FeedbackType, 
     FeatureArea, 
     SatisfactionLevel,
+    UIImprovementAgent,
     create_feedback_collector
 )
 from agents.interaction_tasking.ui_improvement_agent import (
     UIImprovementAgent,
     create_ui_improvement_agent
+)
+
+# Import enhanced navigation
+from agents.interaction_tasking.enhanced_navigation import (
+    EnhancedNavigationAgent,
+    create_enhanced_navigation
 )
 
 # Fix relative imports - use absolute imports instead
@@ -135,6 +142,10 @@ def initialize_session_state():
     
     if "ui_improvement_agent" not in st.session_state:
         st.session_state.ui_improvement_agent = create_ui_improvement_agent(st.session_state.feedback_collector)
+    
+    # Enhanced navigation initialization
+    if "enhanced_navigation" not in st.session_state:
+        st.session_state.enhanced_navigation = create_enhanced_navigation()
 
 
 def check_authentication():
@@ -606,26 +617,81 @@ def render_authenticated_sidebar():
         
         st.markdown("</div>", unsafe_allow_html=True)
         
-        # Navigation section với modern buttons
+        # Enhanced Navigation section với streamlit-option-menu
         st.markdown("""
             <h3 style="color: #495057; font-size: 1rem; margin-bottom: 1rem;">🧭 Điều hướng</h3>
         """, unsafe_allow_html=True)
         
-        nav_buttons = [
-            ("📊 Dashboard", "dashboard", "primary" if st.session_state.view_mode == "dashboard" else "secondary"),
-            ("🆕 Scan mới", "new_session", "primary" if st.session_state.view_mode == "new_session" else "secondary"),
-            ("💬 Chat mới", "new_chat", "secondary")
-        ]
+        # Use enhanced navigation agent
+        nav_agent = st.session_state.enhanced_navigation
         
-        for label, mode, button_type in nav_buttons:
-            if st.button(label, use_container_width=True, type=button_type, key=f"nav_{mode}"):
-                if mode == "new_chat":
-                    create_new_chat_session()
-                else:
-                    st.session_state.view_mode = mode
-                    if mode == "new_session":
-                        st.session_state.selected_history_session = None
-                    st.rerun()
+        # Get current view mode index for default selection
+        view_mode_mapping = {
+            "dashboard": 0,
+            "new_session": 1, 
+            "pr_review": 2,
+            "qna_assistant": 3,
+            "code_diagrams": 4,
+            "user_feedback": 5,
+            "history_view": 6
+        }
+        
+        current_index = view_mode_mapping.get(st.session_state.view_mode, 0)
+        
+        # Render option menu navigation
+        from streamlit_option_menu import option_menu
+        
+        selected_nav = option_menu(
+            menu_title=None,
+            options=[
+                "🏠 Dashboard",
+                "🔍 Repository Analysis", 
+                "🔄 Pull Request Review",
+                "💬 Q&A Assistant",
+                "📊 Code Diagrams",
+                "📝 User Feedback",
+                "📈 Session History"
+            ],
+            icons=[
+                "house", 
+                "search", 
+                "arrow-repeat", 
+                "chat-text", 
+                "diagram-3", 
+                "pencil-square", 
+                "clock-history"
+            ],
+            menu_icon="list",
+            default_index=current_index,
+            orientation="vertical",
+            styles={
+                "container": {"padding": "0!important", "background-color": "transparent"},
+                "icon": {"color": "#667eea", "font-size": "16px"}, 
+                "nav-link": {
+                    "font-size": "14px", 
+                    "text-align": "left", 
+                    "margin":"2px", 
+                    "padding": "8px 12px",
+                    "border-radius": "8px",
+                    "--hover-color": "#f0f2ff"
+                },
+                "nav-link-selected": {"background-color": "#667eea", "color": "white"},
+            }
+        )
+        
+        # Convert selection to view mode
+        new_view_mode = nav_agent.get_view_mode_from_selection(selected_nav)
+        
+        # Update view mode if changed
+        if new_view_mode != st.session_state.view_mode:
+            st.session_state.view_mode = new_view_mode
+            if new_view_mode == "new_session":
+                st.session_state.selected_history_session = None
+            st.rerun()
+        
+        # Quick chat action
+        if st.button("💬 Chat mới", use_container_width=True, type="secondary"):
+            create_new_chat_session()
         
         st.markdown("<br>", unsafe_allow_html=True)
         

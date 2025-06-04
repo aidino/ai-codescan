@@ -24,6 +24,27 @@ class FeedbackType(Enum):
     GENERAL = "general"
 
 
+class SatisfactionLevel(Enum):
+    """User satisfaction levels."""
+    VERY_DISSATISFIED = "very_dissatisfied"
+    DISSATISFIED = "dissatisfied"
+    NEUTRAL = "neutral"
+    SATISFIED = "satisfied"
+    VERY_SATISFIED = "very_satisfied"
+
+
+class FeatureArea(Enum):
+    """Feature areas for feedback categorization."""
+    REPOSITORY_ANALYSIS = "repository_analysis"
+    CODE_DIAGRAMS = "code_diagrams"
+    PR_REVIEW = "pr_review"
+    CODE_QNA = "code_qna"
+    WEB_INTERFACE = "web_interface"
+    AUTHENTICATION = "authentication"
+    REPORTING = "reporting"
+    MULTI_LANGUAGE_SUPPORT = "multi_language_support"
+
+
 @dataclass
 class FeedbackEntry:
     """Single feedback entry."""
@@ -150,6 +171,26 @@ class FeedbackCollectorAgent:
                 logger.info(f"Feedback {feedback_id} marked as resolved")
                 return True
         return False
+    
+    def get_feedback_summary(self) -> Dict[str, Any]:
+        """Get comprehensive feedback summary for analysis."""
+        return self.get_feedback_statistics()
+    
+    def get_critical_issues(self) -> List[Dict[str, Any]]:
+        """Get critical and high-severity feedback entries."""
+        critical_issues = []
+        for entry in self.feedback_storage:
+            if entry.severity in ['critical', 'high']:
+                critical_issues.append({
+                    "id": entry.feedback_id,
+                    "type": entry.feedback_type.value,
+                    "title": entry.title,
+                    "description": entry.description,
+                    "severity": entry.severity,
+                    "status": entry.status,
+                    "timestamp": entry.timestamp.isoformat()
+                })
+        return critical_issues
 
 
 class UIImprovementAgent:
@@ -250,4 +291,9 @@ class UIImprovementAgent:
         if 'error' in common_issues:
             suggestions.append("Enhance error handling and user-friendly error messages")
         
-        return suggestions 
+        return suggestions
+
+
+def create_feedback_collector() -> FeedbackCollectorAgent:
+    """Factory function to create FeedbackCollectorAgent instance."""
+    return FeedbackCollectorAgent() 

@@ -60,9 +60,9 @@ docker compose up -d
 echo "⏳ Waiting for services to start..."
 sleep 10
 
-# Test Neo4j connection
-echo "🧪 Testing Neo4j connection..."
-python scripts/test_neo4j.py
+# Test system connections
+echo "🧪 Testing system connections..."
+python scripts/simple_neo4j_test.py
 
 echo ""
 echo "✅ Setup completed successfully!"

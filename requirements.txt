@@ -1,6 +1,12 @@
 # Core Web Framework
 streamlit>=1.28.0
 
+# Streamlit Custom Components
+streamlit-option-menu>=0.3.6
+streamlit-ace>=0.1.1
+streamlit-aggrid>=0.3.4
+streamlit-navigation-bar>=2.0.0
+
 # Git Operations
 gitpython>=3.1.40
 pygithub>=1.59.1
